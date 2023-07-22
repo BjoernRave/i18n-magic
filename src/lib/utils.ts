@@ -76,7 +76,20 @@ export const loadLocalesFile = (
   const content = fs.readFileSync(resolvedPath, 'utf-8');
   const json = JSON.parse(content);
 
-  return json;
+  return json as Record<string, string>;
+};
+
+export const writeLocalesFile = (
+  path: string,
+  locale: string,
+  namespace: string,
+  data: Record<string, string>
+) => {
+  const resolvedSavePath = path
+    .replace('{{lng}}', locale)
+    .replace('{{ns}}', namespace);
+
+  fs.writeFileSync(resolvedSavePath, JSON.stringify(data, null, 2));
 };
 
 export const getPureKey = (

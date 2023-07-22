@@ -4,3 +4,8 @@ node_modules
 dist
 
 .yarn
+
+.env
+test.tsx
+locales
+i18n-magic.js

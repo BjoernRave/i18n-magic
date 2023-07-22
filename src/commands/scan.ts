@@ -1,8 +1,7 @@
-import input from '@inquirer/input';
+import { input } from '@inquirer/prompts';
 import glob from 'fast-glob';
 import fs from 'fs';
 import { Parser } from 'i18next-scanner';
-import OpenAI from 'openai';
 
 import { Configuration } from '../lib/types';
 import {
@@ -10,6 +9,7 @@ import {
   loadLocalesFile,
   removeDuplicatesFromArray,
   translateKey,
+  writeLocalesFile,
 } from '../lib/utils';
 
 export const translateMissing = async ({
@@ -21,11 +21,8 @@ export const translateMissing = async ({
   locales,
   globPatterns,
   context,
+  openai,
 }: Configuration) => {
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_KEY,
-  });
-
   const parser = new Parser({
     nsSeparator: false,
     keySeparator: false,
@@ -69,14 +66,14 @@ export const translateMissing = async ({
     }
   }
 
-  console.log(
-    `Please provide the values for the following keys in ${defaultLocale}:`
-  );
-
   if (newKeys.length === 0) {
     console.log('No new keys found.');
     return;
   }
+
+  console.log(
+    `Please provide the values for the following keys in ${defaultLocale}:`
+  );
 
   const newKeysWithDefaultLocale = [];
 
@@ -127,11 +124,9 @@ export const translateMissing = async ({
         existingKeys[key.key] = translatedValues[key.key];
       }
 
-      const resolvedSavePath = savePath
-        .replace('{{lng}}', locale)
-        .replace('{{ns}}', namespace);
-
-      fs.writeFileSync(resolvedSavePath, JSON.stringify(existingKeys, null, 2));
+      writeLocalesFile(savePath, locale, namespace, existingKeys);
     }
   }
+
+  console.log(`Successfully translated ${newKeys.length} keys.`);
 };

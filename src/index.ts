@@ -1,4 +1,6 @@
 import { Command } from 'commander';
+import OpenAI from 'openai';
+import { replaceTranslation } from './commands/replace';
 import { translateMissing } from './commands/scan';
 import { loadConfig } from './lib/utils';
 
@@ -19,6 +21,11 @@ const commands = [
     description: 'Scan for missing translations',
     action: translateMissing,
   },
+  {
+    name: 'replace',
+    description: 'Replace a translation',
+    action: replaceTranslation,
+  },
 ];
 
 for (const command of commands) {
@@ -27,6 +34,9 @@ for (const command of commands) {
     .description(command.description)
     .action(async () => {
       const config = await loadConfig();
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_KEY,
+      });
 
       if (!process.env.OPENAI_KEY) {
         console.error(
@@ -35,7 +45,7 @@ for (const command of commands) {
         process.exit(1);
       }
 
-      command.action(config);
+      command.action({ ...config, openai });
     });
 }
 

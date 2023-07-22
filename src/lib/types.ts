@@ -1,3 +1,5 @@
+import OpenAI from 'openai';
+
 export interface Configuration {
   loadPath: string;
   savePath: string;
@@ -7,4 +9,5 @@ export interface Configuration {
   locales: string[];
   globPatterns: string[];
   context?: string;
+  openai: OpenAI;
 }
