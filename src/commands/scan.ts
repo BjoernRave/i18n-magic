@@ -31,15 +31,12 @@ export const translateMissing = async ({
   const files = await glob(globPatterns);
 
   const keys = [];
+
   files.forEach((file) => {
     const content = fs.readFileSync(file, 'utf-8');
-    parser.parseFuncFromString(
-      content,
-      { list: ['t'] },
-      function (key, options) {
-        keys.push(key);
-      }
-    );
+    parser.parseFuncFromString(content, { list: ['t'] }, (key: string) => {
+      keys.push(key);
+    });
   });
 
   const uniqueKeys = removeDuplicatesFromArray(keys);

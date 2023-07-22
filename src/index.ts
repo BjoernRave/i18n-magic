@@ -11,19 +11,21 @@ require('dotenv').config();
 program
   .name('i18n-magic')
   .description(
-    'CLI to help you manage your locales JSON with translations, replacements, etc.'
+    'CLI to help you manage your locales JSON with translations, replacements, etc. with GPT 3.5'
   )
-  .version('0.1.6');
+  .version('0.2.0');
 
 const commands = [
   {
     name: 'scan',
-    description: 'Scan for missing translations',
+    description:
+      'Scan for missing translations, get prompted for each, translate it to the other locales and save it to the JSON file.',
     action: translateMissing,
   },
   {
     name: 'replace',
-    description: 'Replace a translation',
+    description:
+      'Replace a translation based on the key, and translate it to the other locales and save it to the JSON file.',
     action: replaceTranslation,
   },
 ];

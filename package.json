@@ -1,7 +1,12 @@
 {
   "name": "i18n-magic",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "license": "MIT",
+  "description": "'CLI to help you manage your locales JSON with translations, replacements, etc. with GPT 3.5",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BjoernRave/i18n-magic.git"
+  },
   "author": "BjoernRave",
   "main": "dist/index.js",
   "module": "dist/i18n-magic.esm.js",
