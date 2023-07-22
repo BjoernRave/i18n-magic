@@ -5562,7 +5562,7 @@ __metadata:
     tslib: ^2.6.0
     typescript: ^5.1.6
   bin:
-    i18n-magic: dist/i18n-magic.esm.js
+    i18n-magic: dist/index.js
   languageName: unknown
   linkType: soft
 
