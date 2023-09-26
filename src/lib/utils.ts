@@ -1,6 +1,9 @@
+import glob from 'fast-glob';
 import fs from 'fs';
+import { Parser } from 'i18next-scanner';
 import OpenAI from 'openai';
 import path from 'path';
+import { Configuration } from './types';
 export const loadConfig = () => {
   const filePath = path.join(process.cwd(), 'i18n-magic.js');
 
@@ -112,4 +115,54 @@ export const getPureKey = (
   }
 
   return null;
+};
+
+export const getMissingKeys = async ({
+  globPatterns,
+  namespaces,
+  defaultNamespace,
+  defaultLocale,
+  loadPath,
+}: Configuration) => {
+  const parser = new Parser({
+    nsSeparator: false,
+    keySeparator: false,
+  });
+
+  const files = await glob(globPatterns);
+
+  const keys = [];
+
+  files.forEach((file) => {
+    const content = fs.readFileSync(file, 'utf-8');
+    parser.parseFuncFromString(content, { list: ['t'] }, (key: string) => {
+      keys.push(key);
+    });
+  });
+
+  const uniqueKeys = removeDuplicatesFromArray(keys);
+
+  const newKeys = [];
+
+  for (const namespace of namespaces) {
+    const existingKeys = loadLocalesFile(loadPath, defaultLocale, namespace);
+
+    for (const key of uniqueKeys) {
+      const pureKey = getPureKey(
+        key,
+        namespace,
+        namespace === defaultNamespace
+      );
+
+      if (!pureKey) {
+        continue;
+      }
+
+      if (!existingKeys[pureKey]) {
+        newKeys.push({ key: pureKey, namespace });
+      }
+    }
+  }
+
+  return newKeys;
 };

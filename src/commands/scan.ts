@@ -1,67 +1,25 @@
 import { input } from '@inquirer/prompts';
-import glob from 'fast-glob';
-import fs from 'fs';
-import { Parser } from 'i18next-scanner';
 
 import { Configuration } from '../lib/types';
 import {
-  getPureKey,
+  getMissingKeys,
   loadLocalesFile,
-  removeDuplicatesFromArray,
   translateKey,
   writeLocalesFile,
 } from '../lib/utils';
 
-export const translateMissing = async ({
-  loadPath,
-  savePath,
-  defaultLocale,
-  defaultNamespace,
-  namespaces,
-  locales,
-  globPatterns,
-  context,
-  openai,
-}: Configuration) => {
-  const parser = new Parser({
-    nsSeparator: false,
-    keySeparator: false,
-  });
+export const translateMissing = async (config: Configuration) => {
+  const {
+    loadPath,
+    savePath,
+    defaultLocale,
+    namespaces,
+    locales,
+    context,
+    openai,
+  } = config;
 
-  const files = await glob(globPatterns);
-
-  const keys = [];
-
-  files.forEach((file) => {
-    const content = fs.readFileSync(file, 'utf-8');
-    parser.parseFuncFromString(content, { list: ['t'] }, (key: string) => {
-      keys.push(key);
-    });
-  });
-
-  const uniqueKeys = removeDuplicatesFromArray(keys);
-
-  const newKeys = [];
-
-  for (const namespace of namespaces) {
-    const existingKeys = loadLocalesFile(loadPath, defaultLocale, namespace);
-
-    for (const key of uniqueKeys) {
-      const pureKey = getPureKey(
-        key,
-        namespace,
-        namespace === defaultNamespace
-      );
-
-      if (!pureKey) {
-        continue;
-      }
-
-      if (!existingKeys[pureKey]) {
-        newKeys.push({ key: pureKey, namespace });
-      }
-    }
-  }
+  const newKeys = await getMissingKeys(config);
 
   if (newKeys.length === 0) {
     console.log('No new keys found.');

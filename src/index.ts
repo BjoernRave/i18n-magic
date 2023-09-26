@@ -1,7 +1,9 @@
 import { Command } from 'commander';
 import OpenAI from 'openai';
+import { checkMissing } from './commands/check-missing';
 import { replaceTranslation } from './commands/replace';
 import { translateMissing } from './commands/scan';
+import { CommandType } from './lib/types';
 import { loadConfig } from './lib/utils';
 
 const program = new Command();
@@ -15,7 +17,7 @@ program
   )
   .version('0.2.0');
 
-const commands = [
+const commands: CommandType[] = [
   {
     name: 'scan',
     description:
@@ -27,6 +29,12 @@ const commands = [
     description:
       'Replace a translation based on the key, and translate it to the other locales and save it to the JSON file.',
     action: replaceTranslation,
+  },
+  {
+    name: 'check-missing',
+    description:
+      'Check if there are any missing translations. Useful for a CI/CD pipeline or husky hook.',
+    action: checkMissing,
   },
 ];
 

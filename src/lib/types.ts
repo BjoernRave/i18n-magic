@@ -11,3 +11,9 @@ export interface Configuration {
   context?: string;
   openai: OpenAI;
 }
+
+export interface CommandType {
+  name: string;
+  description: string;
+  action: (config: Configuration) => Promise<void>;
+}

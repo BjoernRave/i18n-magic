@@ -1406,156 +1406,156 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@esbuild/android-arm64@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/android-arm64@npm:0.18.15"
+"@esbuild/android-arm64@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/android-arm64@npm:0.19.3"
   conditions: os=android & cpu=arm64
   languageName: node
   linkType: hard
 
-"@esbuild/android-arm@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/android-arm@npm:0.18.15"
+"@esbuild/android-arm@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/android-arm@npm:0.19.3"
   conditions: os=android & cpu=arm
   languageName: node
   linkType: hard
 
-"@esbuild/android-x64@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/android-x64@npm:0.18.15"
+"@esbuild/android-x64@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/android-x64@npm:0.19.3"
   conditions: os=android & cpu=x64
   languageName: node
   linkType: hard
 
-"@esbuild/darwin-arm64@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/darwin-arm64@npm:0.18.15"
+"@esbuild/darwin-arm64@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/darwin-arm64@npm:0.19.3"
   conditions: os=darwin & cpu=arm64
   languageName: node
   linkType: hard
 
-"@esbuild/darwin-x64@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/darwin-x64@npm:0.18.15"
+"@esbuild/darwin-x64@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/darwin-x64@npm:0.19.3"
   conditions: os=darwin & cpu=x64
   languageName: node
   linkType: hard
 
-"@esbuild/freebsd-arm64@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/freebsd-arm64@npm:0.18.15"
+"@esbuild/freebsd-arm64@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/freebsd-arm64@npm:0.19.3"
   conditions: os=freebsd & cpu=arm64
   languageName: node
   linkType: hard
 
-"@esbuild/freebsd-x64@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/freebsd-x64@npm:0.18.15"
+"@esbuild/freebsd-x64@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/freebsd-x64@npm:0.19.3"
   conditions: os=freebsd & cpu=x64
   languageName: node
   linkType: hard
 
-"@esbuild/linux-arm64@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/linux-arm64@npm:0.18.15"
+"@esbuild/linux-arm64@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/linux-arm64@npm:0.19.3"
   conditions: os=linux & cpu=arm64
   languageName: node
   linkType: hard
 
-"@esbuild/linux-arm@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/linux-arm@npm:0.18.15"
+"@esbuild/linux-arm@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/linux-arm@npm:0.19.3"
   conditions: os=linux & cpu=arm
   languageName: node
   linkType: hard
 
-"@esbuild/linux-ia32@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/linux-ia32@npm:0.18.15"
+"@esbuild/linux-ia32@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/linux-ia32@npm:0.19.3"
   conditions: os=linux & cpu=ia32
   languageName: node
   linkType: hard
 
-"@esbuild/linux-loong64@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/linux-loong64@npm:0.18.15"
+"@esbuild/linux-loong64@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/linux-loong64@npm:0.19.3"
   conditions: os=linux & cpu=loong64
   languageName: node
   linkType: hard
 
-"@esbuild/linux-mips64el@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/linux-mips64el@npm:0.18.15"
+"@esbuild/linux-mips64el@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/linux-mips64el@npm:0.19.3"
   conditions: os=linux & cpu=mips64el
   languageName: node
   linkType: hard
 
-"@esbuild/linux-ppc64@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/linux-ppc64@npm:0.18.15"
+"@esbuild/linux-ppc64@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/linux-ppc64@npm:0.19.3"
   conditions: os=linux & cpu=ppc64
   languageName: node
   linkType: hard
 
-"@esbuild/linux-riscv64@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/linux-riscv64@npm:0.18.15"
+"@esbuild/linux-riscv64@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/linux-riscv64@npm:0.19.3"
   conditions: os=linux & cpu=riscv64
   languageName: node
   linkType: hard
 
-"@esbuild/linux-s390x@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/linux-s390x@npm:0.18.15"
+"@esbuild/linux-s390x@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/linux-s390x@npm:0.19.3"
   conditions: os=linux & cpu=s390x
   languageName: node
   linkType: hard
 
-"@esbuild/linux-x64@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/linux-x64@npm:0.18.15"
+"@esbuild/linux-x64@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/linux-x64@npm:0.19.3"
   conditions: os=linux & cpu=x64
   languageName: node
   linkType: hard
 
-"@esbuild/netbsd-x64@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/netbsd-x64@npm:0.18.15"
+"@esbuild/netbsd-x64@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/netbsd-x64@npm:0.19.3"
   conditions: os=netbsd & cpu=x64
   languageName: node
   linkType: hard
 
-"@esbuild/openbsd-x64@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/openbsd-x64@npm:0.18.15"
+"@esbuild/openbsd-x64@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/openbsd-x64@npm:0.19.3"
   conditions: os=openbsd & cpu=x64
   languageName: node
   linkType: hard
 
-"@esbuild/sunos-x64@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/sunos-x64@npm:0.18.15"
+"@esbuild/sunos-x64@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/sunos-x64@npm:0.19.3"
   conditions: os=sunos & cpu=x64
   languageName: node
   linkType: hard
 
-"@esbuild/win32-arm64@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/win32-arm64@npm:0.18.15"
+"@esbuild/win32-arm64@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/win32-arm64@npm:0.19.3"
   conditions: os=win32 & cpu=arm64
   languageName: node
   linkType: hard
 
-"@esbuild/win32-ia32@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/win32-ia32@npm:0.18.15"
+"@esbuild/win32-ia32@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/win32-ia32@npm:0.19.3"
   conditions: os=win32 & cpu=ia32
   languageName: node
   linkType: hard
 
-"@esbuild/win32-x64@npm:0.18.15":
-  version: 0.18.15
-  resolution: "@esbuild/win32-x64@npm:0.18.15"
+"@esbuild/win32-x64@npm:0.19.3":
+  version: 0.19.3
+  resolution: "@esbuild/win32-x64@npm:0.19.3"
   conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
@@ -1636,143 +1636,144 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@inquirer/checkbox@npm:^1.3.5":
-  version: 1.3.5
-  resolution: "@inquirer/checkbox@npm:1.3.5"
+"@inquirer/checkbox@npm:^1.3.12":
+  version: 1.3.12
+  resolution: "@inquirer/checkbox@npm:1.3.12"
   dependencies:
-    "@inquirer/core": ^3.0.0
-    "@inquirer/type": ^1.1.1
+    "@inquirer/core": ^5.0.1
+    "@inquirer/type": ^1.1.5
     ansi-escapes: ^4.3.2
     chalk: ^4.1.2
     figures: ^3.2.0
-  checksum: 9359a697d2a98e3110291ae7503d8e817449bef00158624d4827f783d29f2738dc2c33721311de814fe76b642989941b9718c440e828973b12803facd4a9ea09
+  checksum: 869b70d5ad387355e264decca7b79121244783f9b2b6b4f9096e733b7a8e80a525b4372b9164591d0fb500ac338d19d7f6952fe2d734e84ce39bac894a916dbd
   languageName: node
   linkType: hard
 
-"@inquirer/confirm@npm:^2.0.6":
-  version: 2.0.6
-  resolution: "@inquirer/confirm@npm:2.0.6"
+"@inquirer/confirm@npm:^2.0.13":
+  version: 2.0.13
+  resolution: "@inquirer/confirm@npm:2.0.13"
   dependencies:
-    "@inquirer/core": ^3.0.0
-    "@inquirer/type": ^1.1.1
+    "@inquirer/core": ^5.0.1
+    "@inquirer/type": ^1.1.5
     chalk: ^4.1.2
-  checksum: cbffd0d652ccc25942e12b670c20abaa77c69eaec09ac2d5cc0ae32125abae06ab2d30cd4a49f3041efcce6eab65c77a60c64b9334ed1df2b6acad196779827b
+  checksum: 62f100d66114fbed47ead50fa4962a99d1cefd8ab7abeff4f759d9c124663a1f0736d419a108bf756a2cd486b01fe288078d22f52ebe00900cfb22cf75ba1e55
   languageName: node
   linkType: hard
 
-"@inquirer/core@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "@inquirer/core@npm:3.0.0"
+"@inquirer/core@npm:^5.0.1":
+  version: 5.0.1
+  resolution: "@inquirer/core@npm:5.0.1"
   dependencies:
-    "@inquirer/type": ^1.1.1
+    "@inquirer/type": ^1.1.5
     "@types/mute-stream": ^0.0.1
-    "@types/node": ^20.4.2
+    "@types/node": ^20.6.5
     "@types/wrap-ansi": ^3.0.0
     ansi-escapes: ^4.3.2
     chalk: ^4.1.2
-    cli-spinners: ^2.8.0
-    cli-width: ^4.0.0
+    cli-spinners: ^2.9.1
+    cli-width: ^4.1.0
     figures: ^3.2.0
     mute-stream: ^1.0.0
     run-async: ^3.0.0
-    string-width: ^4.2.3
+    signal-exit: ^4.1.0
     strip-ansi: ^6.0.1
-    wrap-ansi: ^6.0.1
-  checksum: d8a47c43c7ae1678cb669b66440ada287563fa6a5c47e4a2f686db3fa4d7e14a277432b137acdc4c49ecd4dc57f0c03352bf7973e3c2ae8e49f02498665372a8
+    wrap-ansi: ^6.2.0
+  checksum: 4b3ef004f2050daeeb977e83773bd43171ea064a007bd1e17977c04be27a1fe94c344b1094a287759f10bdd1eb0cdb6f629a869cca7233a0f754b2a3e3be41c0
   languageName: node
   linkType: hard
 
-"@inquirer/editor@npm:^1.2.4":
-  version: 1.2.4
-  resolution: "@inquirer/editor@npm:1.2.4"
+"@inquirer/editor@npm:^1.2.11":
+  version: 1.2.11
+  resolution: "@inquirer/editor@npm:1.2.11"
   dependencies:
-    "@inquirer/core": ^3.0.0
-    "@inquirer/type": ^1.1.1
+    "@inquirer/core": ^5.0.1
+    "@inquirer/type": ^1.1.5
     chalk: ^4.1.2
-    external-editor: ^3.0.3
-  checksum: 3355ddbf91baab86d5016b35fd09905bfe6f5daee3f8dc844d8f3904161547eb93efd2a8845e172bbf9159148abd68bcf20c1d811c74330064b783c9ab8be67d
+    external-editor: ^3.1.0
+  checksum: fb562678f2e987d2d812598b64834a2a657c2de87a376eb2704cfc241a3a4436c5c50174e703164366d4df32b92b3c17401c5eaaa99e8678a91841d5ecacc1c3
   languageName: node
   linkType: hard
 
-"@inquirer/expand@npm:^1.1.5":
-  version: 1.1.5
-  resolution: "@inquirer/expand@npm:1.1.5"
+"@inquirer/expand@npm:^1.1.12":
+  version: 1.1.12
+  resolution: "@inquirer/expand@npm:1.1.12"
   dependencies:
-    "@inquirer/core": ^3.0.0
-    "@inquirer/type": ^1.1.1
+    "@inquirer/core": ^5.0.1
+    "@inquirer/type": ^1.1.5
     chalk: ^4.1.2
     figures: ^3.2.0
-  checksum: 04df9f1713864a965bfaff12358cbd4de97f58363dfb0b625ba4c4b4736bdb1cef38b5a726024ea41b0a55cdbdd1d271fbb6659a8e7fce8927383a8d1bf77562
+  checksum: 6682928033e33d61f9dbf84ed6bc2e8d1569df825869e72df741f62e68876d36d36c32f519e6d365b0f7715b241581b130673298e221c679ae9dbc1fbb8d8f89
   languageName: node
   linkType: hard
 
-"@inquirer/input@npm:^1.2.5":
-  version: 1.2.5
-  resolution: "@inquirer/input@npm:1.2.5"
+"@inquirer/input@npm:^1.2.12":
+  version: 1.2.12
+  resolution: "@inquirer/input@npm:1.2.12"
   dependencies:
-    "@inquirer/core": ^3.0.0
-    "@inquirer/type": ^1.1.1
+    "@inquirer/core": ^5.0.1
+    "@inquirer/type": ^1.1.5
     chalk: ^4.1.2
-  checksum: a39b7e4ea9140efd1ff41ff2661fbb9b1bbc4dc08e4e645d028eb50925ebc0c9d3d5e31f969ffef4139e5b170e2e6ff536624ec2bbe22aae9bc7e8712f182087
+  checksum: 7633d7a5bd3dc9c84be243f1cce8273ac910967a4c21679454bbc12b0c64e09d4b6017f4efaea0a2309ea971b49a3729c8f51fdbbbcc49ec277bb03df3dbf826
   languageName: node
   linkType: hard
 
-"@inquirer/password@npm:^1.1.5":
-  version: 1.1.5
-  resolution: "@inquirer/password@npm:1.1.5"
+"@inquirer/password@npm:^1.1.12":
+  version: 1.1.12
+  resolution: "@inquirer/password@npm:1.1.12"
   dependencies:
-    "@inquirer/input": ^1.2.5
-    "@inquirer/type": ^1.1.1
+    "@inquirer/input": ^1.2.12
+    "@inquirer/type": ^1.1.5
+    ansi-escapes: ^4.3.2
     chalk: ^4.1.2
-  checksum: 81aa1a101cfffdcaab6e12487ffc672e5a5cad0c4e2c504f0c56b7bf3119077826d6df5b0a35a2a938c1ff888618d68e656f7acc5103abd5d7b2b56e97aa5ff3
+  checksum: b121699a4256108b13b3f44c7c83093d9e0842f81ff6cfb44df5802de45d988315941a39dd82404007284a44c554ec0091e6c729f2c86ab902b5baa66a3f8bd6
   languageName: node
   linkType: hard
 
-"@inquirer/prompts@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "@inquirer/prompts@npm:3.0.0"
+"@inquirer/prompts@npm:^3.1.2":
+  version: 3.1.2
+  resolution: "@inquirer/prompts@npm:3.1.2"
   dependencies:
-    "@inquirer/checkbox": ^1.3.5
-    "@inquirer/confirm": ^2.0.6
-    "@inquirer/core": ^3.0.0
-    "@inquirer/editor": ^1.2.4
-    "@inquirer/expand": ^1.1.5
-    "@inquirer/input": ^1.2.5
-    "@inquirer/password": ^1.1.5
-    "@inquirer/rawlist": ^1.2.5
-    "@inquirer/select": ^1.2.5
-  checksum: f4bfa4da8f8be09ed25c2c13cf7006dfcbbad9ea895562a3de0a3d29a3cac4d9fadb9180c9334de9e41bb2572f73c78e802df383fd5a0d02a7d90d6330e990f0
+    "@inquirer/checkbox": ^1.3.12
+    "@inquirer/confirm": ^2.0.13
+    "@inquirer/core": ^5.0.1
+    "@inquirer/editor": ^1.2.11
+    "@inquirer/expand": ^1.1.12
+    "@inquirer/input": ^1.2.12
+    "@inquirer/password": ^1.1.12
+    "@inquirer/rawlist": ^1.2.12
+    "@inquirer/select": ^1.2.12
+  checksum: 780f703c35ef9ab4268ead93da89458519a42a059349245a301c2c8bbe48f1e6e5213a804f9bff63fb75f710fa028330e92f6b8e28c71e7981ccdb2691c55c65
   languageName: node
   linkType: hard
 
-"@inquirer/rawlist@npm:^1.2.5":
-  version: 1.2.5
-  resolution: "@inquirer/rawlist@npm:1.2.5"
+"@inquirer/rawlist@npm:^1.2.12":
+  version: 1.2.12
+  resolution: "@inquirer/rawlist@npm:1.2.12"
   dependencies:
-    "@inquirer/core": ^3.0.0
-    "@inquirer/type": ^1.1.1
+    "@inquirer/core": ^5.0.1
+    "@inquirer/type": ^1.1.5
     chalk: ^4.1.2
-  checksum: e94388228305b0d1b49b4f4c6b744c89614c7f413cae2098ff5f7d685ae485b9ad3af9f93796061fad2c8bfa816e7daa9e349ee2499398011744d7c03f6718c3
+  checksum: fb5210f635d1bf7c3fe7a0d0aebae64f0f8f53ed29f85bd6edd9a36bb4ae63e54e6e9cd528e36ba2223b070685be3b2b27ed488fdcdc3c5a0c2cab96ae31127b
   languageName: node
   linkType: hard
 
-"@inquirer/select@npm:^1.2.5":
-  version: 1.2.5
-  resolution: "@inquirer/select@npm:1.2.5"
+"@inquirer/select@npm:^1.2.12":
+  version: 1.2.12
+  resolution: "@inquirer/select@npm:1.2.12"
   dependencies:
-    "@inquirer/core": ^3.0.0
-    "@inquirer/type": ^1.1.1
+    "@inquirer/core": ^5.0.1
+    "@inquirer/type": ^1.1.5
     ansi-escapes: ^4.3.2
     chalk: ^4.1.2
     figures: ^3.2.0
-  checksum: 752b97cc3189e2d119c0a431f2c61ac25029f5edcdf5495da42edabec698c53b08275df6649dbf8678368ffef61e5fe1f9ad8e0e9b3c0f925a48c1eeb549ddd9
+  checksum: f154524f91ac21dcbf32c4b9a439b54ad962ba4a6bf0110c926fd2a78ddb31957ed04f22a7eac59689d9ea82884136c38194a49d6d1b68235e99b1dc1707fc71
   languageName: node
   linkType: hard
 
-"@inquirer/type@npm:^1.1.1":
-  version: 1.1.1
-  resolution: "@inquirer/type@npm:1.1.1"
-  checksum: 1fcce0bd6c92611ed67ee9252deebba0fa9a54aeb4e37fc349ec736c8e1ffaa58f3a02dbe84489ff9a90bebc6b1080a19169ef30c16a18128cf8f42d06a49f51
+"@inquirer/type@npm:^1.1.5":
+  version: 1.1.5
+  resolution: "@inquirer/type@npm:1.1.5"
+  checksum: 5417e10978b7fbbb691c64259261d220ab12b95d05a7092dba228ce71e830385e6da26669e45916993b367177f3d99157a95ff09a0ad7075f0545ef9c1a0c81b
   languageName: node
   linkType: hard
 
@@ -2312,39 +2313,39 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@size-limit/esbuild@npm:8.2.6":
-  version: 8.2.6
-  resolution: "@size-limit/esbuild@npm:8.2.6"
+"@size-limit/esbuild@npm:9.0.0":
+  version: 9.0.0
+  resolution: "@size-limit/esbuild@npm:9.0.0"
   dependencies:
-    esbuild: ^0.18.6
+    esbuild: ^0.19.2
     nanoid: ^3.3.6
   peerDependencies:
-    size-limit: 8.2.6
-  checksum: 1239c0cd8777713acce27bba4e3bdc11c21acf494aa640584d4a55596dc891c31ff5e74db23750845c38b27d46b95ba83a003edd444a5087b00aebadc1ecc26c
+    size-limit: 9.0.0
+  checksum: 78f5d0cd367f6791ea05adbe0b50c572701bbefc8d5ded56fff1367c6a278401c968d7561a7969e3f5e1250823f28690f7d82887188d7e9f3bcc056f8b860a89
   languageName: node
   linkType: hard
 
-"@size-limit/file@npm:8.2.6":
-  version: 8.2.6
-  resolution: "@size-limit/file@npm:8.2.6"
+"@size-limit/file@npm:9.0.0":
+  version: 9.0.0
+  resolution: "@size-limit/file@npm:9.0.0"
   dependencies:
-    semver: 7.5.3
+    semver: 7.5.4
   peerDependencies:
-    size-limit: 8.2.6
-  checksum: bfff3d28e21752eabb64b94bb1d5741fe0293a1a639e6c027051a1e839b4cb67a14fa9d3d4c01ffee69eeb7fdfafbf94f8f08647363e9c2370fdfed785e2b099
+    size-limit: 9.0.0
+  checksum: e74947acb37294b716f96b93eba9c34dd00b6feac84f15c9bbfa356d94e84c247afa77fd7ea94a39fe526f10266ec61000f9657882198ba696a691f11b7090ce
   languageName: node
   linkType: hard
 
-"@size-limit/preset-small-lib@npm:^8.2.6":
-  version: 8.2.6
-  resolution: "@size-limit/preset-small-lib@npm:8.2.6"
+"@size-limit/preset-small-lib@npm:^9.0.0":
+  version: 9.0.0
+  resolution: "@size-limit/preset-small-lib@npm:9.0.0"
   dependencies:
-    "@size-limit/esbuild": 8.2.6
-    "@size-limit/file": 8.2.6
-    size-limit: 8.2.6
+    "@size-limit/esbuild": 9.0.0
+    "@size-limit/file": 9.0.0
+    size-limit: 9.0.0
   peerDependencies:
-    size-limit: 8.2.6
-  checksum: b0f9b287dc53dd191e5894a82531f44599b94d91403215d19c0da57d7f7e00cb64fe0c2db6ad6edaa7dde81ee801ae9f70a6c76645c53939f180e101d101a17e
+    size-limit: 9.0.0
+  checksum: 16755df36ee3078a2c7ae01b398dfc80b4648afce2939a54053b21c0085dfa7f91d0ec8b45f1037badbc60430fd0e77c6baf39c29b46a7e0ee261bd042657b02
   languageName: node
   linkType: hard
 
@@ -2383,10 +2384,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsconfig/recommended@npm:^1.0.2":
-  version: 1.0.2
-  resolution: "@tsconfig/recommended@npm:1.0.2"
-  checksum: 8dab26157fc9748ff2d090b95f4dbe2aeb592dbdcf90f373f712da5ac54ff24f66193e7ee68fdc45880e7f767cfeb339ef3e9970ca59608ef93225db047f0d16
+"@tsconfig/recommended@npm:^1.0.3":
+  version: 1.0.3
+  resolution: "@tsconfig/recommended@npm:1.0.3"
+  checksum: cf2bf93d419e28b98ac82d9587035daf7dc1e0ef9b8db873a7962967d8744df352ebd2986b046911889e989d4f2caec3bf5826a4c8a4b61572d03329fdc56b34
   languageName: node
   linkType: hard
 
@@ -2543,7 +2544,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*, @types/node@npm:^20.4.2, @types/node@npm:^20.4.4":
+"@types/node@npm:*":
   version: 20.4.4
   resolution: "@types/node@npm:20.4.4"
   checksum: 43f3c4a8acc38ae753e15a0e79bae0447d255b3742fa87f8e065d7b9d20ecb0e03d6c5b46c00d5d26f4552160381a00255f49205595a8ee48c2423e00263c930
@@ -2554,6 +2555,13 @@ __metadata:
   version: 18.17.0
   resolution: "@types/node@npm:18.17.0"
   checksum: 3a43c5c5541342751b514485144818a515fac5427f663066068eaacbe8a108cbe1207aae75ec89d34c3b32414c334aad84e9083cf7fcf3ebfd970adc871314a4
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:^20.6.5, @types/node@npm:^20.7.0":
+  version: 20.7.0
+  resolution: "@types/node@npm:20.7.0"
+  checksum: 1b2919925c213f4d2039ada7a8354c998e144f7291db8d719ef58ea9924ab636c113690073b0ec3b82ba62907385f7e0f51e9d1583c1a818776daa5156d3a590
   languageName: node
   linkType: hard
 
@@ -2774,15 +2782,6 @@ __metadata:
   peerDependencies:
     acorn: ^6 || ^7 || ^8
   checksum: 6c83ec57062f2ce7b1fa8a3fa6b10b7ed282e3fd5ba2c42d7fed8114566452726c499c9a4254f426f4fddaca11e7ff9a35491320eac2c754e69069ca60ca34e3
-  languageName: node
-  linkType: hard
-
-"acorn-dynamic-import@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "acorn-dynamic-import@npm:4.0.0"
-  peerDependencies:
-    acorn: ^6.0.0
-  checksum: ef7298e632e9d107b2be06b47d607de94d7213ca2417fced02af76b0c71e13074d98924e270c7bfec421c1049ed9001a97ed4d0f28020d9cfa1aae16ca20664a
   languageName: node
   linkType: hard
 
@@ -3672,17 +3671,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cli-spinners@npm:^2.5.0, cli-spinners@npm:^2.8.0":
+"cli-spinners@npm:^2.5.0":
   version: 2.9.0
   resolution: "cli-spinners@npm:2.9.0"
   checksum: a9c56e1f44457d4a9f4f535364e729cb8726198efa9e98990cfd9eda9e220dfa4ba12f92808d1be5e29029cdfead781db82dc8549b97b31c907d55f96aa9b0e2
   languageName: node
   linkType: hard
 
-"cli-width@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "cli-width@npm:4.0.0"
-  checksum: 1ec12311217cc8b2d018646a58b61424d2348def598fb58ba2c32e28f0bcb59a35cef168110311cefe3340abf00e5171b351de6c3e2c084bd1642e6e2a9e144e
+"cli-spinners@npm:^2.9.1":
+  version: 2.9.1
+  resolution: "cli-spinners@npm:2.9.1"
+  checksum: 1780618be58309c469205bc315db697934bac68bce78cd5dfd46248e507a533172d623c7348ecfd904734f597ce0a4e5538684843d2cfb7af485d4466699940c
+  languageName: node
+  linkType: hard
+
+"cli-width@npm:^4.1.0":
+  version: 4.1.0
+  resolution: "cli-width@npm:4.1.0"
+  checksum: 0a79cff2dbf89ef530bcd54c713703ba94461457b11e5634bd024c78796ed21401e32349c004995954e06f442d82609287e7aabf6a5f02c919a1cf3b9b6854ff
   languageName: node
   linkType: hard
 
@@ -4403,32 +4409,32 @@ __metadata:
   languageName: node
   linkType: hard
 
-"esbuild@npm:^0.18.6":
-  version: 0.18.15
-  resolution: "esbuild@npm:0.18.15"
+"esbuild@npm:^0.19.2":
+  version: 0.19.3
+  resolution: "esbuild@npm:0.19.3"
   dependencies:
-    "@esbuild/android-arm": 0.18.15
-    "@esbuild/android-arm64": 0.18.15
-    "@esbuild/android-x64": 0.18.15
-    "@esbuild/darwin-arm64": 0.18.15
-    "@esbuild/darwin-x64": 0.18.15
-    "@esbuild/freebsd-arm64": 0.18.15
-    "@esbuild/freebsd-x64": 0.18.15
-    "@esbuild/linux-arm": 0.18.15
-    "@esbuild/linux-arm64": 0.18.15
-    "@esbuild/linux-ia32": 0.18.15
-    "@esbuild/linux-loong64": 0.18.15
-    "@esbuild/linux-mips64el": 0.18.15
-    "@esbuild/linux-ppc64": 0.18.15
-    "@esbuild/linux-riscv64": 0.18.15
-    "@esbuild/linux-s390x": 0.18.15
-    "@esbuild/linux-x64": 0.18.15
-    "@esbuild/netbsd-x64": 0.18.15
-    "@esbuild/openbsd-x64": 0.18.15
-    "@esbuild/sunos-x64": 0.18.15
-    "@esbuild/win32-arm64": 0.18.15
-    "@esbuild/win32-ia32": 0.18.15
-    "@esbuild/win32-x64": 0.18.15
+    "@esbuild/android-arm": 0.19.3
+    "@esbuild/android-arm64": 0.19.3
+    "@esbuild/android-x64": 0.19.3
+    "@esbuild/darwin-arm64": 0.19.3
+    "@esbuild/darwin-x64": 0.19.3
+    "@esbuild/freebsd-arm64": 0.19.3
+    "@esbuild/freebsd-x64": 0.19.3
+    "@esbuild/linux-arm": 0.19.3
+    "@esbuild/linux-arm64": 0.19.3
+    "@esbuild/linux-ia32": 0.19.3
+    "@esbuild/linux-loong64": 0.19.3
+    "@esbuild/linux-mips64el": 0.19.3
+    "@esbuild/linux-ppc64": 0.19.3
+    "@esbuild/linux-riscv64": 0.19.3
+    "@esbuild/linux-s390x": 0.19.3
+    "@esbuild/linux-x64": 0.19.3
+    "@esbuild/netbsd-x64": 0.19.3
+    "@esbuild/openbsd-x64": 0.19.3
+    "@esbuild/sunos-x64": 0.19.3
+    "@esbuild/win32-arm64": 0.19.3
+    "@esbuild/win32-ia32": 0.19.3
+    "@esbuild/win32-x64": 0.19.3
   dependenciesMeta:
     "@esbuild/android-arm":
       optional: true
@@ -4476,7 +4482,7 @@ __metadata:
       optional: true
   bin:
     esbuild: bin/esbuild
-  checksum: 81eb78fb5ff9f4304512e383f518862875fa7a0cce0ef9e0270d80ebd21bf0210d5cd6cf721f8a96ca64cc2d36ade03d9ed80cbcd5e81530b5a7b95ab86f8ca6
+  checksum: f998ba82b1bbf0f3036201dc2cb94f92aff887b7552738ea3e4dd6f386f87740ef76aabae2fc1c4b91a519354d390f6d9fd89eb71e26882983f6fbaf75369206
   languageName: node
   linkType: hard
 
@@ -4923,7 +4929,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"external-editor@npm:^3.0.3":
+"external-editor@npm:^3.1.0":
   version: 3.1.0
   resolution: "external-editor@npm:3.1.0"
   dependencies:
@@ -5664,32 +5670,31 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "i18n-magic@workspace:."
   dependencies:
-    "@inquirer/prompts": ^3.0.0
-    "@size-limit/preset-small-lib": ^8.2.6
-    "@tsconfig/recommended": ^1.0.2
-    "@types/node": ^20.4.4
+    "@inquirer/prompts": ^3.1.2
+    "@size-limit/preset-small-lib": ^9.0.0
+    "@tsconfig/recommended": ^1.0.3
+    "@types/node": ^20.7.0
     chalk: ^5.3.0
     commander: ^11.0.0
     dotenv: ^16.3.1
     dts-cli: ^2.0.3
     fast-glob: ^3.3.1
     husky: ^8.0.3
-    i18next-scanner: ^4.3.0
-    openai: ^4.0.0-beta.6
-    size-limit: ^8.2.6
-    tslib: ^2.6.0
-    typescript: ^5.1.6
+    i18next-scanner: ^4.4.0
+    openai: ^4.10.0
+    size-limit: ^9.0.0
+    tslib: ^2.6.2
+    typescript: ^5.2.2
   bin:
     i18n-magic: dist/index.js
   languageName: unknown
   linkType: soft
 
-"i18next-scanner@npm:^4.3.0":
-  version: 4.3.0
-  resolution: "i18next-scanner@npm:4.3.0"
+"i18next-scanner@npm:^4.4.0":
+  version: 4.4.0
+  resolution: "i18next-scanner@npm:4.4.0"
   dependencies:
     acorn: ^8.0.4
-    acorn-dynamic-import: ^4.0.0
     acorn-jsx: ^5.3.1
     acorn-stage3: ^4.0.0
     acorn-walk: ^8.0.0
@@ -5710,7 +5715,7 @@ __metadata:
     vinyl-fs: ^4.0.0
   bin:
     i18next-scanner: bin/cli.js
-  checksum: f099cc8ac3e290ef279fbb61ed2cb3923a7a90790f471aafb29c90aee96b548c0c6689b89668d8efc4cf8e367d879fa2c92911442c9b699c2be4a33a44168126
+  checksum: bebbfa7aa4a60144425926304279ec3f0a714a74f50b30283badf1798177d6e6215aec4ef29bd351b47b291541981b7d2605b6b2e043284d3254ae517cb95241
   languageName: node
   linkType: hard
 
@@ -7597,9 +7602,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"openai@npm:^4.0.0-beta.6":
-  version: 4.0.0-beta.6
-  resolution: "openai@npm:4.0.0-beta.6"
+"openai@npm:^4.10.0":
+  version: 4.10.0
+  resolution: "openai@npm:4.10.0"
   dependencies:
     "@types/node": ^18.11.18
     "@types/node-fetch": ^2.6.4
@@ -7609,7 +7614,9 @@ __metadata:
     form-data-encoder: 1.7.2
     formdata-node: ^4.3.2
     node-fetch: ^2.6.7
-  checksum: 2c955893b2217b88c060a88e7816549f54eb907e8b4b3598d17ebc2625d2f9376a4a5bbdc2dfa1afc2f531b4aa425d24986a45b8a37d5b8e584a3fd5b6e53b55
+  bin:
+    openai: bin/cli
+  checksum: bdbf4d39f25a83c3ab551ce16d5d12b39217af4556bbf93c1c57f3eef9324e97098144de29e5b95d0b092a5f9e03efa8b05e15d96957c8a30a3aab916000f50b
   languageName: node
   linkType: hard
 
@@ -8415,14 +8422,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semver@npm:7.5.3":
-  version: 7.5.3
-  resolution: "semver@npm:7.5.3"
+"semver@npm:7.5.4, semver@npm:^7.3.5, semver@npm:^7.3.7, semver@npm:^7.3.8, semver@npm:^7.5.3":
+  version: 7.5.4
+  resolution: "semver@npm:7.5.4"
   dependencies:
     lru-cache: ^6.0.0
   bin:
     semver: bin/semver.js
-  checksum: 9d58db16525e9f749ad0a696a1f27deabaa51f66e91d2fa2b0db3de3e9644e8677de3b7d7a03f4c15bc81521e0c3916d7369e0572dbde250d9bedf5194e2a8a7
+  checksum: 12d8ad952fa353b0995bf180cdac205a4068b759a140e5d3c608317098b3575ac2f1e09182206bf2eb26120e1c0ed8fb92c48c592f6099680de56bb071423ca3
   languageName: node
   linkType: hard
 
@@ -8432,17 +8439,6 @@ __metadata:
   bin:
     semver: bin/semver.js
   checksum: ae47d06de28836adb9d3e25f22a92943477371292d9b665fb023fae278d345d508ca1958232af086d85e0155aee22e313e100971898bbb8d5d89b8b1d4054ca2
-  languageName: node
-  linkType: hard
-
-"semver@npm:^7.3.5, semver@npm:^7.3.7, semver@npm:^7.3.8, semver@npm:^7.5.3":
-  version: 7.5.4
-  resolution: "semver@npm:7.5.4"
-  dependencies:
-    lru-cache: ^6.0.0
-  bin:
-    semver: bin/semver.js
-  checksum: 12d8ad952fa353b0995bf180cdac205a4068b759a140e5d3c608317098b3575ac2f1e09182206bf2eb26120e1c0ed8fb92c48c592f6099680de56bb071423ca3
   languageName: node
   linkType: hard
 
@@ -8525,6 +8521,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"signal-exit@npm:^4.1.0":
+  version: 4.1.0
+  resolution: "signal-exit@npm:4.1.0"
+  checksum: 64c757b498cb8629ffa5f75485340594d2f8189e9b08700e69199069c8e3070fb3e255f7ab873c05dc0b3cec412aea7402e10a5990cb6a050bd33ba062a6c549
+  languageName: node
+  linkType: hard
+
 "sisteransi@npm:^1.0.5":
   version: 1.0.5
   resolution: "sisteransi@npm:1.0.5"
@@ -8532,9 +8535,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"size-limit@npm:8.2.6, size-limit@npm:^8.2.6":
-  version: 8.2.6
-  resolution: "size-limit@npm:8.2.6"
+"size-limit@npm:9.0.0, size-limit@npm:^9.0.0":
+  version: 9.0.0
+  resolution: "size-limit@npm:9.0.0"
   dependencies:
     bytes-iec: ^3.1.1
     chokidar: ^3.5.3
@@ -8544,7 +8547,7 @@ __metadata:
     picocolors: ^1.0.0
   bin:
     size-limit: bin.js
-  checksum: 8b28e87f5cbfabd5ccbcf3f09152542477a9de9ac138761168aa1c720d28c66941aaa0d61bff64510fd291c5d419ced294766f41bfd827fb1428f2122fb0beb7
+  checksum: c20d5d24aa4edf931234a009067ffe4b7cc4e0e00d944684990284838910b556ba35f91a3c30e604e00037b21df346c966c0205f7539a0e50cb75852c07bb9d7
   languageName: node
   linkType: hard
 
@@ -9170,10 +9173,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tslib@npm:^2.0.3, tslib@npm:^2.4.0, tslib@npm:^2.4.1, tslib@npm:^2.6.0":
+"tslib@npm:^2.0.3, tslib@npm:^2.4.0, tslib@npm:^2.4.1":
   version: 2.6.0
   resolution: "tslib@npm:2.6.0"
   checksum: c01066038f950016a18106ddeca4649b4d76caa76ec5a31e2a26e10586a59fceb4ee45e96719bf6c715648e7c14085a81fee5c62f7e9ebee68e77a5396e5538f
+  languageName: node
+  linkType: hard
+
+"tslib@npm:^2.6.2":
+  version: 2.6.2
+  resolution: "tslib@npm:2.6.2"
+  checksum: 329ea56123005922f39642318e3d1f0f8265d1e7fcb92c633e0809521da75eeaca28d2cf96d7248229deb40e5c19adf408259f4b9640afd20d13aecc1430f3ad
   languageName: node
   linkType: hard
 
@@ -9279,7 +9289,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^5.0.2, typescript@npm:^5.1.6":
+"typescript@npm:^5.0.2":
   version: 5.1.6
   resolution: "typescript@npm:5.1.6"
   bin:
@@ -9289,13 +9299,33 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@^5.0.2#~builtin<compat/typescript>, typescript@patch:typescript@^5.1.6#~builtin<compat/typescript>":
+"typescript@npm:^5.2.2":
+  version: 5.2.2
+  resolution: "typescript@npm:5.2.2"
+  bin:
+    tsc: bin/tsc
+    tsserver: bin/tsserver
+  checksum: 7912821dac4d962d315c36800fe387cdc0a6298dba7ec171b350b4a6e988b51d7b8f051317786db1094bd7431d526b648aba7da8236607febb26cf5b871d2d3c
+  languageName: node
+  linkType: hard
+
+"typescript@patch:typescript@^5.0.2#~builtin<compat/typescript>":
   version: 5.1.6
   resolution: "typescript@patch:typescript@npm%3A5.1.6#~builtin<compat/typescript>::version=5.1.6&hash=5da071"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
   checksum: f53bfe97f7c8b2b6d23cf572750d4e7d1e0c5fff1c36d859d0ec84556a827b8785077bc27676bf7e71fae538e517c3ecc0f37e7f593be913d884805d931bc8be
+  languageName: node
+  linkType: hard
+
+"typescript@patch:typescript@^5.2.2#~builtin<compat/typescript>":
+  version: 5.2.2
+  resolution: "typescript@patch:typescript@npm%3A5.2.2#~builtin<compat/typescript>::version=5.2.2&hash=14eedb"
+  bin:
+    tsc: bin/tsc
+    tsserver: bin/tsserver
+  checksum: 07106822b4305de3f22835cbba949a2b35451cad50888759b6818421290ff95d522b38ef7919e70fb381c5fe9c1c643d7dea22c8b31652a717ddbd57b7f4d554
   languageName: node
   linkType: hard
 
@@ -9649,7 +9679,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"wrap-ansi@npm:^6.0.1":
+"wrap-ansi@npm:^6.2.0":
   version: 6.2.0
   resolution: "wrap-ansi@npm:6.2.0"
   dependencies:

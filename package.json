@@ -1,6 +1,6 @@
 {
   "name": "i18n-magic",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "MIT",
   "description": "CLI to help you manage your locales JSON with translations, replacements, etc. with GPT 3.5",
   "repository": {
@@ -53,22 +53,22 @@
     }
   ],
   "dependencies": {
-    "@inquirer/prompts": "^3.0.0",
+    "@inquirer/prompts": "^3.1.2",
     "chalk": "^5.3.0",
     "commander": "^11.0.0",
     "dotenv": "^16.3.1",
     "fast-glob": "^3.3.1",
-    "i18next-scanner": "^4.3.0",
-    "openai": "^4.0.0-beta.6"
+    "i18next-scanner": "^4.4.0",
+    "openai": "^4.10.0"
   },
   "devDependencies": {
-    "@size-limit/preset-small-lib": "^8.2.6",
-    "@tsconfig/recommended": "^1.0.2",
-    "@types/node": "^20.4.4",
+    "@size-limit/preset-small-lib": "^9.0.0",
+    "@tsconfig/recommended": "^1.0.3",
+    "@types/node": "^20.7.0",
     "dts-cli": "^2.0.3",
     "husky": "^8.0.3",
-    "size-limit": "^8.2.6",
-    "tslib": "^2.6.0",
-    "typescript": "^5.1.6"
+    "size-limit": "^9.0.0",
+    "tslib": "^2.6.2",
+    "typescript": "^5.2.2"
   }
 }
