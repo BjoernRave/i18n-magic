@@ -3,6 +3,7 @@ import fs from 'fs';
 import { Parser } from 'i18next-scanner';
 import OpenAI from 'openai';
 import path from 'path';
+import prompts from 'prompts';
 import { Configuration } from './types';
 export const loadConfig = () => {
   const filePath = path.join(process.cwd(), 'i18n-magic.js');
@@ -165,4 +166,21 @@ export const getMissingKeys = async ({
   }
 
   return newKeys;
+};
+
+export const getTextInput = async (prompt: string) => {
+  const input = await prompts({
+    name: 'value',
+    type: 'text',
+    message: prompt,
+    onState: (state) => {
+      if (state.aborted) {
+        process.nextTick(() => {
+          process.exit(0);
+        });
+      }
+    },
+  });
+
+  return input.value as string;
 };

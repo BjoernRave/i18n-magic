@@ -1,15 +1,17 @@
-import prompts from 'prompts';
 import { Configuration } from '../lib/types';
-import { loadLocalesFile, translateKey, writeLocalesFile } from '../lib/utils';
+import {
+  getTextInput,
+  loadLocalesFile,
+  translateKey,
+  writeLocalesFile,
+} from '../lib/utils';
 
 const getKeyToReplace = async (keys: any) => {
-  const keyToReplace = await prompts({
-    name: 'value',
-    type: 'text',
-    message: 'Enter the key to replace the translation for: ',
-  });
+  const keyToReplace = await getTextInput(
+    'Enter the key to replace the translation for: '
+  );
 
-  if (!keys[keyToReplace.value]) {
+  if (!keys[keyToReplace]) {
     console.log(`The key "${keyToReplace}" does not exist.`);
     return await getKeyToReplace(keys);
   } else {
@@ -43,23 +45,19 @@ export const replaceTranslation = async (config: Configuration) => {
     `The current translation in ${defaultLocale} for "${keyToReplace}" is "${keys[keyToReplace]}".`
   );
 
-  const newTranslation = await prompts({
-    message: `Enter the new translation: `,
-    name: 'value',
-    type: 'text',
-  });
+  const newTranslation = await getTextInput(`Enter the new translation: `);
 
   for (const locale of locales) {
     let newValue = '';
     if (locale === defaultLocale) {
-      newValue = newTranslation.value;
+      newValue = newTranslation;
     } else {
       const translation = await translateKey({
         context,
         inputLanguage: defaultLocale,
         outputLanguage: locale,
         object: {
-          [keyToReplace]: newTranslation.value,
+          [keyToReplace]: newTranslation,
         },
         openai,
       });

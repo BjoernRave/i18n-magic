@@ -1,7 +1,7 @@
-import prompts from 'prompts';
 import { Configuration } from '../lib/types';
 import {
   getMissingKeys,
+  getTextInput,
   loadLocalesFile,
   translateKey,
   writeLocalesFile,
@@ -32,16 +32,12 @@ export const translateMissing = async (config: Configuration) => {
   const newKeysWithDefaultLocale = [];
 
   for (const newKey of newKeys) {
-    const answer = await prompts({
-      message: newKey.key,
-      name: 'value',
-      type: 'text',
-    });
+    const answer = await getTextInput(newKey.key);
 
     newKeysWithDefaultLocale.push({
       key: newKey.key,
       namespace: newKey.namespace,
-      value: answer.value,
+      value: answer,
     });
   }
 
