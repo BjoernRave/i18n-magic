@@ -40,7 +40,7 @@ export const translateKey = async ({
   openai: OpenAI;
 }) => {
   const completion = await openai.chat.completions.create({
-    model: 'gpt-3.5-turbo-16k-0613',
+    model: 'gpt-3.5-turbo-1106',
     messages: [
       {
         content: `You are a bot that translates the values of a locales JSON. ${

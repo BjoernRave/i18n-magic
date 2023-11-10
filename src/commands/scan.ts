@@ -1,5 +1,4 @@
-import { input } from '@inquirer/prompts';
-
+import prompts from 'prompts';
 import { Configuration } from '../lib/types';
 import {
   getMissingKeys,
@@ -33,12 +32,16 @@ export const translateMissing = async (config: Configuration) => {
   const newKeysWithDefaultLocale = [];
 
   for (const newKey of newKeys) {
-    const answer = await input({ message: newKey.key });
+    const answer = await prompts({
+      message: newKey.key,
+      name: 'value',
+      type: 'text',
+    });
 
     newKeysWithDefaultLocale.push({
       key: newKey.key,
       namespace: newKey.namespace,
-      value: answer,
+      value: answer.value,
     });
   }
 
