@@ -6,7 +6,7 @@ This currently only works for JSON based translation systems, like: [Next-Transl
 
 To use:
 
-1. Create a `OPENAI_KEY` in your `.env` file
+1. Create a `OPENAI_API_KEY` in your `.env` file
 2. Create a config file, called `i18n-magic.js` in your project root.
 
 The content of the file should look something like this:
@@ -21,7 +21,7 @@ module.exports = {
   defaultNamespace: 'common',
   namespaces: ['common', 'forms'],
   context:
-    'This is a context which increases the quality of the translations by giving context to GPT 3.5',
+    'This is a context which increases the quality of the translations by giving context to the LLM',
 };
 ```
 
