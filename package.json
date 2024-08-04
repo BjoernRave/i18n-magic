@@ -1,6 +1,6 @@
 {
   "name": "i18n-magic",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "license": "MIT",
   "description": "CLI to help you manage your locales JSON with translations, replacements, etc. with OpenAI",
   "repository": {
@@ -30,19 +30,20 @@
   },
   "dependencies": {
     "chalk": "^5.3.0",
-    "commander": "^12.0.0",
+    "commander": "^12.1.0",
     "dotenv": "^16.4.5",
     "fast-glob": "^3.3.2",
-    "i18next-scanner": "^4.4.0",
-    "openai": "^4.28.0",
+    "i18next-scanner": "^4.5.0",
+    "openai": "^4.54.0",
     "prompts": "^2.4.2"
   },
   "devDependencies": {
-    "@tsconfig/recommended": "^1.0.3",
-    "@types/node": "^20.11.19",
+    "@biomejs/biome": "1.8.3",
+    "@tsconfig/recommended": "^1.0.7",
+    "@types/node": "^20.12.12",
     "@types/prompts": "^2.4.9",
-    "dts-cli": "^2.0.4",
+    "dts-cli": "^2.0.5",
     "tslib": "^2.6.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.5.4"
   }
 }

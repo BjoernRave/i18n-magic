@@ -1,10 +1,10 @@
 import glob from "fast-glob"
-import fs from "fs"
 import { Parser } from "i18next-scanner"
-import OpenAI from "openai"
-import path from "path"
+import fs from "node:fs"
+import path from "node:path"
+import type OpenAI from "openai"
 import prompts from "prompts"
-import { Configuration } from "./types"
+import type { Configuration } from "./types"
 export const loadConfig = () => {
   const filePath = path.join(process.cwd(), "i18n-magic.js")
 
@@ -41,7 +41,7 @@ export const translateKey = async ({
   openai: OpenAI
 }) => {
   const completion = await openai.chat.completions.create({
-    model: "gpt-3.5-turbo",
+    model: "gpt-4o-mini",
     messages: [
       {
         content: `You are a bot that translates the values of a locales JSON. ${

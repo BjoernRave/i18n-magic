@@ -3,7 +3,7 @@ import OpenAI from "openai"
 import { checkMissing } from "./commands/check-missing"
 import { replaceTranslation } from "./commands/replace"
 import { translateMissing } from "./commands/scan"
-import { CommandType } from "./lib/types"
+import type { CommandType } from "./lib/types"
 import { loadConfig } from "./lib/utils"
 
 const program = new Command()
