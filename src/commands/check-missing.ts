@@ -8,6 +8,4 @@ export const checkMissing = async (config: Configuration) => {
     console.error("Error: Missing translations found!")
     process.exit(1)
   }
-
-  console.log("No missing translations found.")
 }
