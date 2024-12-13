@@ -1,5 +1,6 @@
 import type { Configuration } from "../lib/types"
 import {
+  checkAllKeysExist,
   getMissingKeys,
   getTextInput,
   loadLocalesFile,
@@ -22,6 +23,9 @@ export const translateMissing = async (config: Configuration) => {
 
   if (newKeys.length === 0) {
     console.log("No new keys found.")
+
+    await checkAllKeysExist(config)
+
     return
   }
 
@@ -80,6 +84,8 @@ export const translateMissing = async (config: Configuration) => {
       writeLocalesFile(savePath, locale, namespace, existingKeys)
     }
   }
+
+  await checkAllKeysExist(config)
 
   console.log(`Successfully translated ${newKeys.length} keys.`)
 }

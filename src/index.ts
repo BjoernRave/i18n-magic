@@ -16,6 +16,7 @@ program
     "CLI to help you manage your locales JSON with translations, replacements, etc. with OpenAI.",
   )
   .version("0.2.0")
+  .option("-c, --config <path>", "path to config file")
 
 const commands: CommandType[] = [
   {
@@ -43,7 +44,10 @@ for (const command of commands) {
     .command(command.name)
     .description(command.description)
     .action(async () => {
-      const config = await loadConfig()
+      const config = await loadConfig({
+        configPath: program.opts().config,
+      })
+
       if (!process.env.OPENAI_API_KEY) {
         console.error(
           "Please provide an OpenAI API key in your .env file, called OPENAI_API_KEY.",
