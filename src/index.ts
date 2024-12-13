@@ -1,4 +1,5 @@
 import { Command } from "commander"
+import dotenv from "dotenv"
 import OpenAI from "openai"
 import { checkMissing } from "./commands/check-missing"
 import { replaceTranslation } from "./commands/replace"
@@ -16,10 +17,6 @@ program
   .version("0.2.0")
   .option("-c, --config <path>", "path to config file")
   .option("-e, --env <path>", "path to .env file")
-
-require("dotenv").config({
-  path: program.opts().env || ".env",
-})
 
 const commands: CommandType[] = [
   {
@@ -47,11 +44,17 @@ for (const command of commands) {
     .command(command.name)
     .description(command.description)
     .action(async () => {
+      const res = dotenv.config({
+        path: program.opts().env || ".env",
+      })
+
+      const key = res.parsed?.OPENAI_API_KEY
+
       const config = await loadConfig({
         configPath: program.opts().config,
       })
 
-      if (!process.env.OPENAI_API_KEY) {
+      if (!key) {
         console.error(
           "Please provide an OpenAI API key in your .env file, called OPENAI_API_KEY.",
         )
@@ -59,7 +62,7 @@ for (const command of commands) {
       }
 
       const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
+        apiKey: key,
       })
 
       command.action({ ...config, openai })
