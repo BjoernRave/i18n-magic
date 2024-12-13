@@ -8,8 +8,6 @@ import { loadConfig } from "./lib/utils"
 
 const program = new Command()
 
-require("dotenv").config()
-
 program
   .name("i18n-magic")
   .description(
@@ -17,6 +15,11 @@ program
   )
   .version("0.2.0")
   .option("-c, --config <path>", "path to config file")
+  .option("-e, --env <path>", "path to .env file")
+
+require("dotenv").config({
+  path: program.opts().env || ".env",
+})
 
 const commands: CommandType[] = [
   {

@@ -1,6 +1,6 @@
 {
   "name": "i18n-magic",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "license": "MIT",
   "description": "CLI to help you manage your locales JSON with translations, replacements, etc. with OpenAI",
   "repository": {
