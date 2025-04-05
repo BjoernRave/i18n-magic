@@ -2,7 +2,7 @@
 
 Your CLI toolkit to help you with managing your translations in your project.
 
-This currently only works for JSON based translation systems, like: [Next-Translate](https://github.com/aralroca/next-translate)
+This currently works for JSON based translation systems
 
 To use:
 
