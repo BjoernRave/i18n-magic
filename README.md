@@ -23,28 +23,31 @@ module.exports = {
   context:
     'This is a context which increases the quality of the translations by giving context to the LLM',
   // Optional configurations
-  model: 'gemini-2.0-flash-lite', // or any OpenAI/Gemini model like 'gemini-2.0-flash'
+  model: 'gemini-2.0-flash-lite', // or any OpenAI/Gemini model like 'gpt-4.1-mini'
   OPENAI_API_KEY: '.', // Alternative to using .env file
   GEMINI_API_KEY: '', // Alternative to using .env file
-  disableTranslation: false, // Set to true to skip automatic translations during the scan step. Useful if you want to sync the other languages during CI/CD for example.
+  disableTranslation: false, // Set to true to skip automatic translations during the scan step. Useful if you want to sync the other languages during CI/CD using sync.
 };
 ```
 
 You can also provide custom functions for `loadPath` and `savePath` to store translations in other systems like S3:
 
 ```js
-module.exports = {
-  // Basic configurations
-  globPatterns: ['./components/**/*.tsx', './pages/**/*.tsx', './lib/**/*.ts'],
-  locales: ['en', 'de'],
-  defaultLocale: 'de',
-  defaultNamespace: 'common',
-  namespaces: ['common', 'forms'],
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3")
 
+const s3Client = new S3Client({
+  region: process.env.S3_REGION,
+  credentials: {
+    accessKeyId: process.env.S3_ACCESS_KEY,
+    secretAccessKey: process.env.S3_SECRET_KEY,
+  },
+})
+
+module.exports = {
+  ...
   // Custom load function
   loadPath: async (locale, namespace) => {
     // Example: Load from S3
-    const s3Client = new S3Client({ region: 'us-east-1' });
     const response = await s3Client.send(
       new GetObjectCommand({
         Bucket: 'my-translations-bucket',
@@ -58,7 +61,6 @@ module.exports = {
   // Custom save function
   savePath: async (locale, namespace, data) => {
     // Example: Save to S3
-    const s3Client = new S3Client({ region: 'us-east-1' });
     await s3Client.send(
       new PutObjectCommand({
         Bucket: 'my-translations-bucket',
@@ -91,4 +93,4 @@ Checks if there are any missing translations. Useful for CI/CD or for a husky ho
 
 `sync`
 
-Sync the translations from the default locale to the other locales. Useful for a CI/CD pipeline or husky hook.
+Sync the translations from the default locale to the other locales. Useful for a CI/CD pipeline or husky hook. Should be used together with `disableTranslation: true`
