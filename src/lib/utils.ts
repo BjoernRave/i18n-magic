@@ -4,6 +4,7 @@ import fs from "node:fs"
 import path from "node:path"
 import type OpenAI from "openai"
 import prompts from "prompts"
+import { languages } from "./languges"
 import type { Configuration } from "./types"
 
 export const loadConfig = ({
@@ -36,11 +37,13 @@ export const translateKey = async ({
   object,
   openai,
   outputLanguage,
+  model,
 }: {
   object: Record<string, string>
   context: string
   inputLanguage: string
   outputLanguage: string
+  model: string
   openai: OpenAI
 }) => {
   // Split object into chunks of 100 keys
@@ -53,11 +56,17 @@ export const translateKey = async ({
 
   let result: Record<string, string> = {}
 
+  const existingInput = languages.find((l) => l.value === inputLanguage)
+  const existingOutput = languages.find((l) => l.value === outputLanguage)
+
+  const input = existingInput?.label || inputLanguage
+  const output = existingOutput?.label || outputLanguage
+
   // Translate each chunk
   for (const chunk of chunks) {
     const chunkObject = Object.fromEntries(chunk)
     const completion = await openai.beta.chat.completions.parse({
-      model: "gpt-4o-mini",
+      model,
       messages: [
         {
           content: `You are a bot that translates the values of a locales JSON. ${
@@ -69,8 +78,8 @@ export const translateKey = async ({
         },
         {
           content: JSON.stringify({
-            inputLanguage,
-            outputLanguage,
+            inputLanguage: input,
+            outputLanguage: output,
             data: chunkObject,
           }),
           role: "user",
@@ -95,32 +104,50 @@ export const translateKey = async ({
   return result
 }
 
-export const loadLocalesFile = (
-  path: string,
+export const loadLocalesFile = async (
+  loadPath:
+    | string
+    | ((locale: string, namespace: string) => Promise<Record<string, string>>),
   locale: string,
   namespace: string,
 ) => {
-  const resolvedPath = path
-    .replace("{{lng}}", locale)
-    .replace("{{ns}}", namespace)
+  if (typeof loadPath === "string") {
+    const resolvedPath = loadPath
+      .replace("{{lng}}", locale)
+      .replace("{{ns}}", namespace)
 
-  const content = fs.readFileSync(resolvedPath, "utf-8")
-  const json = JSON.parse(content)
+    const content = fs.readFileSync(resolvedPath, "utf-8")
+    const json = JSON.parse(content)
 
-  return json as Record<string, string>
+    return json as Record<string, string>
+  }
+
+  return loadPath(locale, namespace)
 }
 
-export const writeLocalesFile = (
-  path: string,
+export const writeLocalesFile = async (
+  savePath:
+    | string
+    | ((
+        locale: string,
+        namespace: string,
+        data: Record<string, string>,
+      ) => Promise<void>),
   locale: string,
   namespace: string,
   data: Record<string, string>,
 ) => {
-  const resolvedSavePath = path
-    .replace("{{lng}}", locale)
-    .replace("{{ns}}", namespace)
+  if (typeof savePath === "string") {
+    const resolvedSavePath = savePath
+      .replace("{{lng}}", locale)
+      .replace("{{ns}}", namespace)
 
-  fs.writeFileSync(resolvedSavePath, JSON.stringify(data, null, 2))
+    fs.writeFileSync(resolvedSavePath, JSON.stringify(data, null, 2))
+
+    return
+  }
+
+  await savePath(locale, namespace, data)
 }
 
 export const getPureKey = (
@@ -173,7 +200,13 @@ export const getMissingKeys = async ({
   const newKeys = []
 
   for (const namespace of namespaces) {
-    const existingKeys = loadLocalesFile(loadPath, defaultLocale, namespace)
+    const existingKeys = await loadLocalesFile(
+      loadPath,
+      defaultLocale,
+      namespace,
+    )
+
+    console.log(Object.keys(existingKeys).length, "existing keys")
 
     for (const key of uniqueKeys) {
       const pureKey = getPureKey(key, namespace, namespace === defaultNamespace)
@@ -216,9 +249,15 @@ export const checkAllKeysExist = async ({
   context,
   openai,
   savePath,
+  disableTranslation,
+  model,
 }: Configuration) => {
+  if (disableTranslation) {
+    return
+  }
+
   for (const namespace of namespaces) {
-    const defaultLocaleKeys = loadLocalesFile(
+    const defaultLocaleKeys = await loadLocalesFile(
       loadPath,
       defaultLocale,
       namespace,
@@ -227,7 +266,7 @@ export const checkAllKeysExist = async ({
     for (const locale of locales) {
       if (locale === defaultLocale) continue
 
-      const localeKeys = loadLocalesFile(loadPath, locale, namespace)
+      const localeKeys = await loadLocalesFile(loadPath, locale, namespace)
       const missingKeys: Record<string, string> = {}
 
       // Check which keys from default locale are missing in current locale
@@ -249,6 +288,7 @@ export const checkAllKeysExist = async ({
           context,
           object: missingKeys,
           openai,
+          model,
         })
 
         // Merge translated values with existing ones
@@ -264,5 +304,17 @@ export const checkAllKeysExist = async ({
         )
       }
     }
+  }
+}
+
+export class TranslationError extends Error {
+  constructor(
+    message: string,
+    public locale?: string,
+    public namespace?: string,
+    public cause?: Error,
+  ) {
+    super(message)
+    this.name = "TranslationError"
   }
 }

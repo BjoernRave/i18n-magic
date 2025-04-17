@@ -4,8 +4,11 @@ import OpenAI from "openai"
 import { checkMissing } from "./commands/check-missing"
 import { replaceTranslation } from "./commands/replace"
 import { translateMissing } from "./commands/scan"
-import type { CommandType } from "./lib/types"
+import { syncLocales } from "./commands/sync-locales"
+import type { CommandType, Configuration } from "./lib/types"
 import { loadConfig } from "./lib/utils"
+
+// Only run CLI initialization when this file is executed directly
 
 const program = new Command()
 
@@ -37,6 +40,12 @@ const commands: CommandType[] = [
       "Check if there are any missing translations. Useful for a CI/CD pipeline or husky hook.",
     action: checkMissing,
   },
+  {
+    name: "sync",
+    description:
+      "Sync the translations from the default locale to the other locales. Useful for a CI/CD pipeline or husky hook.",
+    action: syncLocales,
+  },
 ]
 
 for (const command of commands) {
@@ -48,21 +57,32 @@ for (const command of commands) {
         path: program.opts().env || ".env",
       })
 
-      const key = res.parsed?.OPENAI_API_KEY
-
-      const config = await loadConfig({
+      const config: Configuration = await loadConfig({
         configPath: program.opts().config,
       })
 
+      const isGemini = (config.model as string)?.includes("gemini")
+
+      // Get API key from environment or config
+      const openaiKey = res.parsed.OPENAI_API_KEY || config.OPENAI_API_KEY
+      const geminiKey = res.parsed.GEMINI_API_KEY || config.GEMINI_API_KEY
+
+      // Select appropriate key based on model type
+      const key = isGemini ? geminiKey : openaiKey
+
       if (!key) {
+        const keyType = isGemini ? "GEMINI_API_KEY" : "OPENAI_API_KEY"
         console.error(
-          "Please provide an OpenAI API key in your .env file, called OPENAI_API_KEY.",
+          `Please provide a${isGemini ? " Gemini" : "n OpenAI"} API key in your .env file or config, called ${keyType}.`,
         )
-        process.exit(0)
+        process.exit(1)
       }
 
       const openai = new OpenAI({
         apiKey: key,
+        ...(isGemini && {
+          baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+        }),
       })
 
       command.action({ ...config, openai })

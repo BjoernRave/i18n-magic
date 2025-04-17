@@ -33,7 +33,7 @@ export const replaceTranslation = async (config: Configuration) => {
     openai,
   } = config
 
-  const keys = loadLocalesFile(
+  const keys = await loadLocalesFile(
     config.loadPath,
     config.defaultLocale,
     config.defaultNamespace,
@@ -60,12 +60,17 @@ export const replaceTranslation = async (config: Configuration) => {
           [keyToReplace]: newTranslation,
         },
         openai,
+        model: config.model,
       })
 
       newValue = translation[keyToReplace]
     }
 
-    const existingKeys = loadLocalesFile(loadPath, locale, defaultNamespace)
+    const existingKeys = await loadLocalesFile(
+      loadPath,
+      locale,
+      defaultNamespace,
+    )
 
     existingKeys[keyToReplace] = newValue
 

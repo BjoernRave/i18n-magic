@@ -1,15 +1,34 @@
 import type OpenAI from "openai"
+import type { ChatModel } from "openai/resources/chat/chat"
+
+type Model =
+  | ChatModel
+  | "gemini-2.5-pro-exp-03-25"
+  | "gemini-2.0-flash"
+  | "gemini-2.0-flash-lite"
 
 export interface Configuration {
-  loadPath: string
-  savePath: string
+  loadPath:
+    | string
+    | ((locale: string, namespace: string) => Promise<Record<string, string>>)
+  savePath:
+    | string
+    | ((
+        locale: string,
+        namespace: string,
+        data: Record<string, string>,
+      ) => Promise<void>)
   defaultLocale: string
   defaultNamespace: string
   namespaces: string[]
   locales: string[]
   globPatterns: string[]
   context?: string
-  openai: OpenAI
+  disableTranslation?: boolean
+  OPENAI_API_KEY?: string
+  GEMINI_API_KEY?: string
+  model?: Model
+  openai?: OpenAI
 }
 
 export interface CommandType {

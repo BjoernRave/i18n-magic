@@ -1,17 +1,26 @@
 {
-  "name": "i18n-magic",
-  "version": "0.9.5",
+  "name": "@scoutello/i18n-magic",
+  "version": "0.14.0",
+  "private": false,
   "license": "MIT",
-  "description": "CLI to help you manage your locales JSON with translations, replacements, etc. with OpenAI",
+  "description": "CLI to help you manage your locales JSON with translations, replacements, etc. with OpenAI or Gemini",
   "repository": {
     "type": "git",
-    "url": "https://github.com/BjoernRave/i18n-magic.git"
+    "url": "https://github.com/BjoernRave/i18n-magic"
   },
-  "author": "BjoernRave",
+  "author": "scoutello",
   "main": "dist/index.js",
   "module": "dist/i18n-magic.esm.js",
   "typings": "dist/index.d.ts",
+  "types": "dist/index.d.ts",
   "bin": "dist/index.js",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/i18n-magic.esm.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "files": ["dist", "src"],
   "scripts": {
     "analyze": "size-limit --why",
@@ -28,15 +37,17 @@
   "engines": {
     "node": ">=18"
   },
+  "peerDependencies": {
+    "openai": "^4.94.0"
+  },
   "dependencies": {
-    "chalk": "^5.3.0",
-    "commander": "^12.1.0",
-    "dotenv": "^16.4.5",
-    "fast-glob": "^3.3.2",
+    "chalk": "^5.4.1",
+    "commander": "^13.1.0",
+    "dotenv": "^16.5.0",
+    "fast-glob": "^3.3.3",
     "i18next-scanner": "^4.6.0",
-    "openai": "^4.72.0",
     "prompts": "^2.4.2",
-    "zod": "^3.23.8"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
@@ -44,7 +55,8 @@
     "@types/node": "^20.12.12",
     "@types/prompts": "^2.4.9",
     "dts-cli": "^2.0.5",
-    "tslib": "^2.8.0",
-    "typescript": "^5.6.3"
+    "openai": "^4.94.0",
+    "tslib": "^2.8.1",
+    "typescript": "^5.8.3"
   }
 }

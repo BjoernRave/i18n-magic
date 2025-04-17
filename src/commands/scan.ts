@@ -17,6 +17,7 @@ export const translateMissing = async (config: Configuration) => {
     locales,
     context,
     openai,
+    disableTranslation,
   } = config
 
   const newKeys = await getMissingKeys(config)
@@ -30,7 +31,7 @@ export const translateMissing = async (config: Configuration) => {
   }
 
   console.log(
-    `Please provide the values for the following keys in ${defaultLocale}:`,
+    `${newKeys.length} keys are missing. Please provide the values for the following keys in ${defaultLocale}:`,
   )
 
   const newKeysWithDefaultLocale = []
@@ -51,7 +52,9 @@ export const translateMissing = async (config: Configuration) => {
     return prev
   }, {})
 
-  for (const locale of locales) {
+  const allLocales = disableTranslation ? [defaultLocale] : locales
+
+  for (const locale of allLocales) {
     let translatedValues = {}
 
     if (locale === defaultLocale) {
@@ -63,11 +66,12 @@ export const translateMissing = async (config: Configuration) => {
         context,
         object: newKeysObject,
         openai,
+        model: config.model,
       })
     }
 
     for (const namespace of namespaces) {
-      const existingKeys = loadLocalesFile(loadPath, locale, namespace)
+      const existingKeys = await loadLocalesFile(loadPath, locale, namespace)
 
       const relevantKeys = newKeysWithDefaultLocale.filter(
         (key) => key.namespace === namespace,
