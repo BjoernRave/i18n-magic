@@ -53,10 +53,13 @@ for (const command of commands) {
 
   // Add key option to replace command
   if (command.name === "replace") {
-    cmd.option("-k, --key <key>", "translation key to replace")
+    cmd
+      .option("-k, --key <key>", "translation key to replace")
+      .allowExcessArguments(true)
+      .argument("[key]", "translation key to replace")
   }
 
-  cmd.action(async (options) => {
+  cmd.action(async (arg, options) => {
     const res = dotenv.config({
       path: program.opts().env || ".env",
     })
@@ -89,8 +92,11 @@ for (const command of commands) {
       }),
     })
 
-    if (command.name === "replace" && options.key) {
-      command.action({ ...config, openai }, options.key)
+    // For replace command, check for key in argument or option
+    if (command.name === "replace") {
+      // If key is provided as positional argument, use that first
+      const keyToUse = typeof arg === "string" ? arg : options.key
+      command.action({ ...config, openai }, keyToUse)
     } else {
       command.action({ ...config, openai })
     }

@@ -87,9 +87,12 @@ Scan for missing translations, get prompted for each, translate it to the other 
 
 Replace a translation based on the key, and translate it to the other locales and save it to the JSON file.
 
-Optional arguments:
+You can specify the key in two ways:
 
-- `-k, --key <key>`: Specify the translation key to replace directly.
+- As a positional argument: `npx @scoutello/i18n-magic replace your.translation.key`
+- Using the option flag: `npx @scoutello/i18n-magic replace --key your.translation.key`
+
+If no key is provided, you will be prompted to enter one.
 
 `check-missing`
 
