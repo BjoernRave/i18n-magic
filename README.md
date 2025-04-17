@@ -87,6 +87,10 @@ Scan for missing translations, get prompted for each, translate it to the other 
 
 Replace a translation based on the key, and translate it to the other locales and save it to the JSON file.
 
+Optional arguments:
+
+- `-k, --key <key>`: Specify the translation key to replace directly.
+
 `check-missing`
 
 Checks if there are any missing translations. Useful for CI/CD or for a husky hook.

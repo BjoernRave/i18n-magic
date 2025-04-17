@@ -20,7 +20,10 @@ const getKeyToReplace = async (keys: Record<string, string>) => {
   return keyToReplace
 }
 
-export const replaceTranslation = async (config: Configuration) => {
+export const replaceTranslation = async (
+  config: Configuration,
+  key?: string,
+) => {
   const {
     loadPath,
     savePath,
@@ -39,7 +42,19 @@ export const replaceTranslation = async (config: Configuration) => {
     config.defaultNamespace,
   )
 
-  const keyToReplace = await getKeyToReplace(keys)
+  let keyToReplace: string
+
+  if (key) {
+    if (keys[key]) {
+      keyToReplace = key
+      console.log(`The key "${keyToReplace}" exists.`)
+    } else {
+      console.log(`The key "${key}" does not exist.`)
+      keyToReplace = await getKeyToReplace(keys)
+    }
+  } else {
+    keyToReplace = await getKeyToReplace(keys)
+  }
 
   console.log(
     `The current translation in ${defaultLocale} for "${keyToReplace}" is "${keys[keyToReplace]}".`,

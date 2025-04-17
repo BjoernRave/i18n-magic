@@ -49,44 +49,52 @@ const commands: CommandType[] = [
 ]
 
 for (const command of commands) {
-  program
-    .command(command.name)
-    .description(command.description)
-    .action(async () => {
-      const res = dotenv.config({
-        path: program.opts().env || ".env",
-      })
+  const cmd = program.command(command.name).description(command.description)
 
-      const config: Configuration = await loadConfig({
-        configPath: program.opts().config,
-      })
+  // Add key option to replace command
+  if (command.name === "replace") {
+    cmd.option("-k, --key <key>", "translation key to replace")
+  }
 
-      const isGemini = (config.model as string)?.includes("gemini")
-
-      // Get API key from environment or config
-      const openaiKey = res.parsed.OPENAI_API_KEY || config.OPENAI_API_KEY
-      const geminiKey = res.parsed.GEMINI_API_KEY || config.GEMINI_API_KEY
-
-      // Select appropriate key based on model type
-      const key = isGemini ? geminiKey : openaiKey
-
-      if (!key) {
-        const keyType = isGemini ? "GEMINI_API_KEY" : "OPENAI_API_KEY"
-        console.error(
-          `Please provide a${isGemini ? " Gemini" : "n OpenAI"} API key in your .env file or config, called ${keyType}.`,
-        )
-        process.exit(1)
-      }
-
-      const openai = new OpenAI({
-        apiKey: key,
-        ...(isGemini && {
-          baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
-        }),
-      })
-
-      command.action({ ...config, openai })
+  cmd.action(async (options) => {
+    const res = dotenv.config({
+      path: program.opts().env || ".env",
     })
+
+    const config: Configuration = await loadConfig({
+      configPath: program.opts().config,
+    })
+
+    const isGemini = (config.model as string)?.includes("gemini")
+
+    // Get API key from environment or config
+    const openaiKey = res.parsed.OPENAI_API_KEY || config.OPENAI_API_KEY
+    const geminiKey = res.parsed.GEMINI_API_KEY || config.GEMINI_API_KEY
+
+    // Select appropriate key based on model type
+    const key = isGemini ? geminiKey : openaiKey
+
+    if (!key) {
+      const keyType = isGemini ? "GEMINI_API_KEY" : "OPENAI_API_KEY"
+      console.error(
+        `Please provide a${isGemini ? " Gemini" : "n OpenAI"} API key in your .env file or config, called ${keyType}.`,
+      )
+      process.exit(1)
+    }
+
+    const openai = new OpenAI({
+      apiKey: key,
+      ...(isGemini && {
+        baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+      }),
+    })
+
+    if (command.name === "replace" && options.key) {
+      command.action({ ...config, openai }, options.key)
+    } else {
+      command.action({ ...config, openai })
+    }
+  })
 }
 
 program.parse(process.argv)

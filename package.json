@@ -1,6 +1,6 @@
 {
   "name": "@scoutello/i18n-magic",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "private": false,
   "license": "MIT",
   "description": "CLI to help you manage your locales JSON with translations, replacements, etc. with OpenAI or Gemini",
