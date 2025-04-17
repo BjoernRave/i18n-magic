@@ -76,7 +76,7 @@ module.exports = {
 then just run:
 
 ```bash
-npx i18n-magic [command]
+npx @scoutello/i18n-magic [command]
 ```
 
 `scan`
