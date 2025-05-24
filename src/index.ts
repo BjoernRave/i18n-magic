@@ -2,6 +2,8 @@ import { Command } from "commander"
 import dotenv from "dotenv"
 import OpenAI from "openai"
 import { checkMissing } from "./commands/check-missing"
+import { removeUnusedKeys } from "./commands/clean"
+import { createPrunedNamespace } from "./commands/create-pruned-namespace"
 import { replaceTranslation } from "./commands/replace"
 import { translateMissing } from "./commands/scan"
 import { syncLocales } from "./commands/sync-locales"
@@ -45,6 +47,17 @@ const commands: CommandType[] = [
     description:
       "Sync the translations from the default locale to the other locales. Useful for a CI/CD pipeline or husky hook.",
     action: syncLocales,
+  },
+  {
+    name: "clean",
+    description:
+      "Remove unused translations from all locales. Useful for a CI/CD pipeline or husky hook.",
+    action: removeUnusedKeys,
+  },
+  {
+    name: "prune",
+    description: "Create a pruned namespace from the other namespaces.",
+    action: createPrunedNamespace,
   },
 ]
 
@@ -104,3 +117,13 @@ for (const command of commands) {
 }
 
 program.parse(process.argv)
+
+// Export functions and types for programmatic usage
+export { createPrunedNamespaceAutomated } from "./commands/create-pruned-namespace-automated"
+export type {
+  PruneOptions,
+  PruneResponse,
+  PruneResult,
+} from "./commands/create-pruned-namespace-automated"
+export type { Configuration, NamespacePruneConfig } from "./lib/types"
+export { loadConfig } from "./lib/utils"

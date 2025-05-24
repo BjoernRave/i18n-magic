@@ -117,9 +117,17 @@ export const loadLocalesFile = async (
       .replace("{{ns}}", namespace)
 
     const content = fs.readFileSync(resolvedPath, "utf-8")
-    const json = JSON.parse(content)
-
-    return json as Record<string, string>
+    try {
+      const json = JSON.parse(content)
+      return json as Record<string, string>
+    } catch (error) {
+      throw new TranslationError(
+        `Invalid JSON in locale file for ${locale}:${namespace}. Path: ${resolvedPath}`,
+        locale,
+        namespace,
+        error instanceof Error ? error : undefined,
+      )
+    }
   }
 
   return loadPath(locale, namespace)

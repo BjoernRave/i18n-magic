@@ -1,14 +1,37 @@
 {
   "name": "@scoutello/i18n-magic",
-  "version": "0.15.1",
+  "version": "0.18.0",
   "private": false,
   "license": "MIT",
-  "description": "CLI to help you manage your locales JSON with translations, replacements, etc. with OpenAI or Gemini",
+  "description": "Intelligent CLI toolkit that automates internationalization workflows with AI-powered translations for JavaScript/TypeScript projects",
+  "keywords": [
+    "i18n",
+    "internationalization",
+    "translation",
+    "localization",
+    "cli",
+    "ai",
+    "openai",
+    "gemini",
+    "react-i18next",
+    "next-i18next",
+    "vue-i18n",
+    "automation",
+    "typescript",
+    "javascript"
+  ],
+  "homepage": "https://github.com/BjoernRave/i18n-magic#readme",
+  "bugs": {
+    "url": "https://github.com/BjoernRave/i18n-magic/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/BjoernRave/i18n-magic"
   },
-  "author": "scoutello",
+  "author": {
+    "name": "scoutello",
+    "url": "https://github.com/BjoernRave"
+  },
   "main": "dist/index.js",
   "module": "dist/i18n-magic.esm.js",
   "typings": "dist/index.d.ts",
@@ -35,7 +58,7 @@
     "testEnvironment": "node"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=16"
   },
   "peerDependencies": {
     "openai": "^4.94.0"
