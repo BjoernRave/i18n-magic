@@ -31,6 +31,7 @@ export interface Configuration {
   globPatterns: string[]
   context?: string
   disableTranslation?: boolean
+  autoClear?: boolean
   OPENAI_API_KEY?: string
   GEMINI_API_KEY?: string
   model?: Model

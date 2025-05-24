@@ -1,3 +1,4 @@
+import console from "console"
 import type { Configuration } from "../lib/types"
 import {
   checkAllKeysExist,
@@ -7,6 +8,7 @@ import {
   translateKey,
   writeLocalesFile,
 } from "../lib/utils"
+import { removeUnusedKeys } from "./clean"
 
 export const translateMissing = async (config: Configuration) => {
   const {
@@ -18,7 +20,17 @@ export const translateMissing = async (config: Configuration) => {
     context,
     openai,
     disableTranslation,
+    autoClear,
   } = config
+
+  // Run clean command first if autoClear is enabled
+  if (autoClear) {
+    console.log("🧹 Auto-clearing unused translations before scanning...")
+    await removeUnusedKeys(config)
+    console.log(
+      "✅ Auto-clear completed. Now scanning for missing translations...\n",
+    )
+  }
 
   const newKeys = await getMissingKeys(config)
 

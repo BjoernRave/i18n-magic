@@ -36,7 +36,7 @@
   "module": "dist/i18n-magic.esm.js",
   "typings": "dist/index.d.ts",
   "types": "dist/index.d.ts",
-  "bin": "dist/index.js",
+  "bin": "dist/cli.js",
   "exports": {
     ".": {
       "require": "./dist/index.js",
@@ -47,9 +47,9 @@
   "files": ["dist", "src"],
   "scripts": {
     "analyze": "size-limit --why",
-    "build": "dts build && echo '#!/usr/bin/env node' | cat - dist/index.js > temp && mv temp dist/index.js",
+    "build": "dts build && echo '#!/usr/bin/env node' | cat - dist/cli.js > temp && mv temp dist/cli.js",
     "lint": "dts lint",
-    "prepare": "dts build && echo '#!/usr/bin/env node' | cat - dist/index.js > temp && mv temp dist/index.js",
+    "prepare": "dts build && echo '#!/usr/bin/env node' | cat - dist/cli.js > temp && mv temp dist/cli.js",
     "size": "size-limit",
     "start": "dts watch",
     "test": "dts test"

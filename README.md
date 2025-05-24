@@ -59,6 +59,7 @@ module.exports = {
   OPENAI_API_KEY: '.', // Alternative to using .env file
   GEMINI_API_KEY: '', // Alternative to using .env file
   disableTranslation: false, // Set to true to skip automatic translations during the scan step. Useful if you want to sync the other languages during CI/CD using sync.
+  autoClear: true, // When using the scan command, always run the clean before
 
   // Optional: Namespace-specific configurations for pruned translations
   pruneNamespaces: [
