@@ -5,7 +5,7 @@ import path from "node:path"
 import type OpenAI from "openai"
 import prompts from "prompts"
 import { languages } from "./languges"
-import type { Configuration } from "./types"
+import type { GlobPatternConfig, Configuration } from "./types"
 
 export const loadConfig = ({
   configPath = "i18n-magic.js",
@@ -180,6 +180,62 @@ export const getPureKey = (
   return null
 }
 
+/**
+ * Extracts all glob patterns from the configuration, handling both string and object formats
+ */
+export const extractGlobPatterns = (
+  globPatterns: (string | GlobPatternConfig)[],
+): string[] => {
+  return globPatterns.map((pattern) =>
+    typeof pattern === "string" ? pattern : pattern.pattern,
+  )
+}
+
+/**
+ * Gets the namespaces associated with a specific file path based on glob pattern configuration
+ */
+export const getNamespacesForFile = (
+  filePath: string,
+  globPatterns: (string | { pattern: string; namespaces: string[] })[],
+): string[] => {
+  const matchingNamespaces: string[] = []
+
+  for (const pattern of globPatterns) {
+    if (typeof pattern === "object") {
+      // Use minimatch or similar logic to check if file matches pattern
+      const globPattern = pattern.pattern
+      // For now, using a simple includes check - in production you'd want proper glob matching
+      if (filePath.includes(globPattern.replace("**/*", "").replace("*", ""))) {
+        matchingNamespaces.push(...pattern.namespaces)
+      }
+    }
+  }
+
+  return [...new Set(matchingNamespaces)] // Remove duplicates
+}
+
+/**
+ * Gets all glob patterns that should be used for a specific namespace
+ */
+export const getGlobPatternsForNamespace = (
+  namespace: string,
+  globPatterns: (string | { pattern: string; namespaces: string[] })[],
+): string[] => {
+  const patterns: string[] = []
+
+  for (const pattern of globPatterns) {
+    if (typeof pattern === "string") {
+      // String patterns apply to all namespaces
+      patterns.push(pattern)
+    } else if (pattern.namespaces.includes(namespace)) {
+      // Object patterns only apply to specified namespaces
+      patterns.push(pattern.pattern)
+    }
+  }
+
+  return patterns
+}
+
 export const getMissingKeys = async ({
   globPatterns,
   namespaces,
@@ -192,7 +248,8 @@ export const getMissingKeys = async ({
     keySeparator: false,
   })
 
-  const files = await glob([...globPatterns, "!**/node_modules/**"])
+  const allPatterns = extractGlobPatterns(globPatterns)
+  const files = await glob([...allPatterns, "!**/node_modules/**"])
 
   const keys = []
 

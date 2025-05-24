@@ -45,13 +45,34 @@ Create an `i18n-magic.js` file in your project root with your project-specific s
 
 ```js
 module.exports = {
-  globPatterns: ['./components/**/*.tsx', './pages/**/*.tsx', './lib/**/*.ts'],
+  globPatterns: [
+    './components/**/*.tsx',
+    './pages/**/*.tsx',
+    './lib/**/*.ts',
+    // Namespace-specific patterns for pruned translations
+    {
+      pattern: './apps/dashboard/**/*.tsx',
+      namespaces: ['dashboard'],
+    },
+    {
+      pattern: './apps/dashboard/**/*.ts',
+      namespaces: ['dashboard'],
+    },
+    {
+      pattern: './apps/mobile/**/*.tsx',
+      namespaces: ['mobile'],
+    },
+    {
+      pattern: './apps/mobile/**/*.ts',
+      namespaces: ['mobile'],
+    },
+  ],
   loadPath: 'locales/{{lng}}/{{ns}}.json',
   savePath: 'locales/{{lng}}/{{ns}}.json',
   locales: ['en', 'de'],
   defaultLocale: 'de',
   defaultNamespace: 'common',
-  namespaces: ['common', 'forms'],
+  namespaces: ['common', 'forms', 'dashboard', 'mobile'],
   context:
     'This is a context which increases the quality of the translations by giving context to the LLM',
   // Optional configurations
@@ -60,22 +81,28 @@ module.exports = {
   GEMINI_API_KEY: '', // Alternative to using .env file
   disableTranslation: false, // Set to true to skip automatic translations during the scan step. Useful if you want to sync the other languages during CI/CD using sync.
   autoClear: true, // When using the scan command, always run the clean before
-
-  // Optional: Namespace-specific configurations for pruned translations
-  pruneNamespaces: [
-    {
-      sourceNamespace: 'common',
-      newNamespace: 'dashboard',
-      globPatterns: ['./apps/dashboard/**/*.tsx', './apps/dashboard/**/*.ts'],
-    },
-    {
-      sourceNamespace: 'common',
-      newNamespace: 'mobile',
-      globPatterns: ['./apps/mobile/**/*.tsx', './apps/mobile/**/*.ts'],
-    },
-  ],
 };
 ```
+
+#### Glob Patterns Configuration
+
+The `globPatterns` array supports two formats:
+
+1. **String patterns**: Simple glob patterns that apply to all namespaces
+
+   ```js
+   './components/**/*.tsx';
+   ```
+
+2. **Object patterns**: Patterns with namespace-specific configuration for pruned translations
+   ```js
+   {
+     pattern: './apps/dashboard/**/*.tsx',
+     namespaces: ['dashboard']
+   }
+   ```
+
+When using object patterns, translation keys found in files matching that pattern will be associated with the specified namespaces. This enables automatic creation of namespace-specific translation bundles.
 
 ### 4. Start using i18n Magic
 

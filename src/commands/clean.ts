@@ -26,7 +26,10 @@ export const removeUnusedKeys = async (config: Configuration) => {
   })
 
   // Find all files to scan
-  const files = await glob([...globPatterns, "!**/node_modules/**"])
+  const allPatterns = globPatterns.map((pattern) =>
+    typeof pattern === "string" ? pattern : pattern.pattern,
+  )
+  const files = await glob([...allPatterns, "!**/node_modules/**"])
 
   // Extract all translation keys from the codebase
   const extractedKeys = []

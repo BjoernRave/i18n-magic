@@ -55,11 +55,14 @@ export const createPrunedNamespace = async (config: Configuration) => {
   const newNamespace = newNamespaceResponse.value
 
   // Step 3: Ask for glob patterns to find relevant keys
+  const allPatterns = config.globPatterns.map((pattern) =>
+    typeof pattern === "string" ? pattern : pattern.pattern,
+  )
   const globPatternsResponse = await prompts({
     type: "list",
     name: "value",
     message: "Enter glob patterns to find relevant keys (comma separated):",
-    initial: config.globPatterns.join(","),
+    initial: allPatterns.join(","),
     separator: ",",
     onState: (state) => {
       if (state.aborted) {

@@ -19,5 +19,5 @@ export type {
 export type {
   CommandType,
   Configuration,
-  NamespacePruneConfig,
+  GlobPatternConfig,
 } from "./lib/types"

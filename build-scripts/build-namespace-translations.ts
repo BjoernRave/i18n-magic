@@ -20,6 +20,39 @@ interface BuildMetadata {
   globPatterns: string[]
 }
 
+/**
+ * Extracts namespace-specific configurations from the new globPatterns structure
+ */
+function extractNamespaceConfigs(config: Configuration) {
+  const namespaceConfigs: Array<{
+    sourceNamespace: string
+    newNamespace: string
+    globPatterns: string[]
+  }> = []
+
+  for (const pattern of config.globPatterns) {
+    if (typeof pattern === "object" && pattern.namespaces) {
+      for (const namespace of pattern.namespaces) {
+        // Find existing config for this namespace or create new one
+        let existingConfig = namespaceConfigs.find(
+          (c) => c.newNamespace === namespace,
+        )
+        if (!existingConfig) {
+          existingConfig = {
+            sourceNamespace: config.defaultNamespace,
+            newNamespace: namespace,
+            globPatterns: [],
+          }
+          namespaceConfigs.push(existingConfig)
+        }
+        existingConfig.globPatterns.push(pattern.pattern)
+      }
+    }
+  }
+
+  return namespaceConfigs
+}
+
 async function buildNamespaceTranslations(
   namespaceName: string,
 ): Promise<void> {
@@ -31,21 +64,21 @@ async function buildNamespaceTranslations(
       configPath: "i18n-magic.js",
     })
 
-    // Check if pruneNamespaces configuration exists
-    if (!config.pruneNamespaces || config.pruneNamespaces.length === 0) {
+    // Extract namespace configurations from globPatterns
+    const namespaceConfigs = extractNamespaceConfigs(config)
+
+    if (namespaceConfigs.length === 0) {
       throw new Error(
-        "No pruneNamespaces configuration found in i18n-magic.js. Please add a 'pruneNamespaces' array to your config.",
+        "No namespace-specific glob patterns found in i18n-magic.js. Please add object patterns with namespaces to your globPatterns array.",
       )
     }
 
     // Get namespace-specific configuration
-    const namespaceConfig = config.pruneNamespaces.find(
+    const namespaceConfig = namespaceConfigs.find(
       (ns) => ns.newNamespace === namespaceName,
     )
     if (!namespaceConfig) {
-      const availableNamespaces = config.pruneNamespaces.map(
-        (ns) => ns.newNamespace,
-      )
+      const availableNamespaces = namespaceConfigs.map((ns) => ns.newNamespace)
       throw new Error(
         `Unknown namespace: ${namespaceName}. Available namespaces: ${availableNamespaces.join(", ")}`,
       )
@@ -110,13 +143,15 @@ async function buildAllNamespaces(): Promise<void> {
     configPath: "i18n-magic.js",
   })
 
-  if (!config.pruneNamespaces || config.pruneNamespaces.length === 0) {
+  const namespaceConfigs = extractNamespaceConfigs(config)
+
+  if (namespaceConfigs.length === 0) {
     throw new Error(
-      "No pruneNamespaces configuration found in i18n-magic.js. Please add a 'pruneNamespaces' array to your config.",
+      "No namespace-specific glob patterns found in i18n-magic.js. Please add object patterns with namespaces to your globPatterns array.",
     )
   }
 
-  for (const namespaceConfig of config.pruneNamespaces) {
+  for (const namespaceConfig of namespaceConfigs) {
     await buildNamespaceTranslations(namespaceConfig.newNamespace)
     console.log("") // Add spacing between namespaces
   }
@@ -141,8 +176,9 @@ async function main(): Promise<void> {
       const config: Configuration = await loadConfig({
         configPath: "i18n-magic.js",
       })
-      if (config.pruneNamespaces && config.pruneNamespaces.length > 0) {
-        const availableNamespaces = config.pruneNamespaces.map(
+      const namespaceConfigs = extractNamespaceConfigs(config)
+      if (namespaceConfigs.length > 0) {
+        const availableNamespaces = namespaceConfigs.map(
           (ns) => ns.newNamespace,
         )
         console.error("Available namespaces:", availableNamespaces.join(", "))

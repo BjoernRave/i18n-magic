@@ -7,12 +7,9 @@ type Model =
   | "gemini-2.0-flash"
   | "gemini-2.0-flash-lite"
 
-export interface NamespacePruneConfig {
-  sourceNamespace: string
-  newNamespace: string
-  globPatterns: string[]
-  includePatterns?: string[]
-  excludePatterns?: string[]
+export interface GlobPatternConfig {
+  pattern: string
+  namespaces: string[]
 }
 
 export interface Configuration {
@@ -30,7 +27,7 @@ export interface Configuration {
   defaultNamespace: string
   namespaces: string[]
   locales: string[]
-  globPatterns: string[]
+  globPatterns: (string | GlobPatternConfig)[]
   context?: string
   disableTranslation?: boolean
   autoClear?: boolean
@@ -38,7 +35,6 @@ export interface Configuration {
   GEMINI_API_KEY?: string
   model?: Model
   openai?: OpenAI
-  pruneNamespaces?: NamespacePruneConfig[]
 }
 
 export interface CommandType {
