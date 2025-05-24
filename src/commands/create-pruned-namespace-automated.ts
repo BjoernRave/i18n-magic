@@ -13,6 +13,8 @@ export interface PruneOptions {
   sourceNamespace: string
   newNamespace: string
   globPatterns: string[]
+  includePatterns?: string[]
+  excludePatterns?: string[]
 }
 
 export interface PruneResult {
@@ -34,7 +36,13 @@ export const createPrunedNamespaceAutomated = async (
   options: PruneOptions,
 ): Promise<PruneResponse> => {
   const { namespaces, loadPath, savePath, locales, defaultNamespace } = config
-  const { sourceNamespace, newNamespace, globPatterns } = options
+  const {
+    sourceNamespace,
+    newNamespace,
+    globPatterns,
+    includePatterns = [],
+    excludePatterns = [],
+  } = options
 
   // Validate inputs
   if (!namespaces.includes(sourceNamespace)) {
@@ -51,6 +59,12 @@ export const createPrunedNamespaceAutomated = async (
     `Creating pruned namespace '${newNamespace}' from '${sourceNamespace}'`,
   )
   console.log(`Using glob patterns: ${globPatterns.join(", ")}`)
+  if (includePatterns.length > 0) {
+    console.log(`Additional include patterns: ${includePatterns.join(", ")}`)
+  }
+  if (excludePatterns.length > 0) {
+    console.log(`Exclude patterns: ${excludePatterns.join(", ")}`)
+  }
 
   // Extract keys from files matching the glob patterns
   const parser = new Parser({
@@ -58,7 +72,15 @@ export const createPrunedNamespaceAutomated = async (
     keySeparator: false,
   })
 
-  const files = await glob([...globPatterns, "!**/node_modules/**"])
+  // Combine main patterns with include patterns, and add exclude patterns
+  const allIncludePatterns = [...globPatterns, ...includePatterns]
+  const allExcludePatterns = [
+    "!**/node_modules/**",
+    ...excludePatterns.map((pattern) => `!${pattern}`),
+  ]
+  const finalPatterns = [...allIncludePatterns, ...allExcludePatterns]
+
+  const files = await glob(finalPatterns)
   console.log(`Found ${files.length} files to scan`)
 
   const extractedKeys = []

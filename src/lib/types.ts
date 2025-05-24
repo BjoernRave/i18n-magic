@@ -11,6 +11,8 @@ export interface NamespacePruneConfig {
   sourceNamespace: string
   newNamespace: string
   globPatterns: string[]
+  includePatterns?: string[]
+  excludePatterns?: string[]
 }
 
 export interface Configuration {
