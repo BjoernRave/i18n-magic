@@ -1,11 +1,8 @@
-import glob from "fast-glob"
-import { Parser } from "i18next-scanner"
-import fs from "node:fs"
 import type { Configuration } from "../lib/types"
 import {
+  getKeysWithNamespaces,
   getPureKey,
   loadLocalesFile,
-  removeDuplicatesFromArray,
   writeLocalesFile,
 } from "../lib/utils"
 
@@ -19,29 +16,11 @@ export const removeUnusedKeys = async (config: Configuration) => {
     savePath,
   } = config
 
-  // Set up the parser
-  const parser = new Parser({
-    nsSeparator: false,
-    keySeparator: false,
+  // Get all keys with their associated namespaces from the codebase
+  const keysWithNamespaces = await getKeysWithNamespaces({
+    globPatterns,
+    defaultNamespace,
   })
-
-  // Find all files to scan
-  const allPatterns = globPatterns.map((pattern) =>
-    typeof pattern === "string" ? pattern : pattern.pattern,
-  )
-  const files = await glob([...allPatterns, "!**/node_modules/**"])
-
-  // Extract all translation keys from the codebase
-  const extractedKeys = []
-  for (const file of files) {
-    const content = fs.readFileSync(file, "utf-8")
-    parser.parseFuncFromString(content, { list: ["t"] }, (key: string) => {
-      extractedKeys.push(key)
-    })
-  }
-
-  // Remove duplicates
-  const uniqueExtractedKeys = removeDuplicatesFromArray(extractedKeys)
 
   // Track stats for reporting
   const stats = {
@@ -49,17 +28,25 @@ export const removeUnusedKeys = async (config: Configuration) => {
     removed: 0,
   }
 
-  // Process each namespace and locale
-  for (const namespace of namespaces) {
-    // Build a set of pure keys that are actually used in the codebase for this namespace
-    const usedKeysSet = new Set<string>()
+  // Group keys by namespace
+  const keysByNamespace: Record<string, Set<string>> = {}
 
-    for (const key of uniqueExtractedKeys) {
+  for (const { key, namespaces: keyNamespaces } of keysWithNamespaces) {
+    for (const namespace of keyNamespaces) {
+      if (!keysByNamespace[namespace]) {
+        keysByNamespace[namespace] = new Set()
+      }
+
       const pureKey = getPureKey(key, namespace, namespace === defaultNamespace)
       if (pureKey) {
-        usedKeysSet.add(pureKey)
+        keysByNamespace[namespace].add(pureKey)
       }
     }
+  }
+
+  // Process each namespace and locale
+  for (const namespace of namespaces) {
+    const usedKeysSet = keysByNamespace[namespace] || new Set()
 
     // Process each locale
     for (const locale of locales) {

@@ -1,23 +1,30 @@
 import type { Configuration } from "../lib/types"
 import {
+  getKeysWithNamespaces,
+  getPureKey,
   getTextInput,
   loadLocalesFile,
   translateKey,
   writeLocalesFile,
 } from "../lib/utils"
 
-const getKeyToReplace = async (keys: Record<string, string>) => {
+const getKeyToReplace = async (
+  allAvailableKeys: Record<string, { namespace: string; value: string }[]>,
+): Promise<{ key: string; namespaces: string[] }> => {
   const keyToReplace = await getTextInput(
     "Enter the key to replace the translation for: ",
   )
 
-  if (!keys[keyToReplace]) {
+  if (!allAvailableKeys[keyToReplace]) {
     console.log(`The key "${keyToReplace}" does not exist.`)
-    return await getKeyToReplace(keys)
+    return await getKeyToReplace(allAvailableKeys)
   }
 
-  console.log(`The key "${keyToReplace}" exists.`)
-  return keyToReplace
+  const namespaces = allAvailableKeys[keyToReplace].map((k) => k.namespace)
+  console.log(
+    `The key "${keyToReplace}" exists in namespaces: ${namespaces.join(", ")}.`,
+  )
+  return { key: keyToReplace, namespaces }
 }
 
 export const replaceTranslation = async (
@@ -36,63 +43,107 @@ export const replaceTranslation = async (
     openai,
   } = config
 
-  const keys = await loadLocalesFile(
-    config.loadPath,
-    config.defaultLocale,
-    config.defaultNamespace,
-  )
+  // Find all keys with their namespaces from the codebase
+  const keysWithNamespaces = await getKeysWithNamespaces({
+    globPatterns,
+    defaultNamespace,
+  })
 
-  let keyToReplace: string
+  // Build a map of all available keys across all namespaces
+  const allAvailableKeys: Record<
+    string,
+    { namespace: string; value: string }[]
+  > = {}
 
-  if (key) {
-    if (keys[key]) {
-      keyToReplace = key
-      console.log(`The key "${keyToReplace}" exists.`)
-    } else {
-      console.log(`The key "${key}" does not exist.`)
-      keyToReplace = await getKeyToReplace(keys)
+  for (const namespace of namespaces) {
+    const keys = await loadLocalesFile(loadPath, defaultLocale, namespace)
+    for (const [keyName, value] of Object.entries(keys)) {
+      if (!allAvailableKeys[keyName]) {
+        allAvailableKeys[keyName] = []
+      }
+      allAvailableKeys[keyName].push({ namespace, value })
     }
-  } else {
-    keyToReplace = await getKeyToReplace(keys)
   }
 
-  console.log(
-    `The current translation in ${defaultLocale} for "${keyToReplace}" is "${keys[keyToReplace]}".`,
-  )
+  let keyToReplace: string
+  let targetNamespaces: string[] = []
+
+  if (key) {
+    if (allAvailableKeys[key]) {
+      keyToReplace = key
+      // Determine which namespaces this key should be updated in based on usage
+      const keyUsage = keysWithNamespaces.filter((k) => {
+        const pureKey = getPureKey(k.key, defaultNamespace, true)
+        return pureKey === key || k.key === key
+      })
+
+      if (keyUsage.length > 0) {
+        // Use namespaces from actual usage
+        const allNamespaces: string[] = []
+        for (const k of keyUsage) {
+          allNamespaces.push(...k.namespaces)
+        }
+        targetNamespaces = [...new Set(allNamespaces)]
+      } else {
+        // Fallback to all namespaces where the key exists
+        targetNamespaces = allAvailableKeys[key].map((k) => k.namespace)
+      }
+
+      console.log(
+        `The key "${keyToReplace}" exists in namespaces: ${targetNamespaces.join(", ")}.`,
+      )
+    } else {
+      console.log(`The key "${key}" does not exist.`)
+      const result = await getKeyToReplace(allAvailableKeys)
+      keyToReplace = result.key
+      targetNamespaces = result.namespaces
+    }
+  } else {
+    const result = await getKeyToReplace(allAvailableKeys)
+    keyToReplace = result.key
+    targetNamespaces = result.namespaces
+  }
+
+  // Show current translations across namespaces
+  for (const namespace of targetNamespaces) {
+    const keys = await loadLocalesFile(loadPath, defaultLocale, namespace)
+    if (keys[keyToReplace]) {
+      console.log(
+        `Current translation in ${defaultLocale} (${namespace}): "${keys[keyToReplace]}"`,
+      )
+    }
+  }
 
   const newTranslation = await getTextInput("Enter the new translation: ")
 
-  for (const locale of locales) {
-    let newValue = ""
-    if (locale === defaultLocale) {
-      newValue = newTranslation
-    } else {
-      const translation = await translateKey({
-        context,
-        inputLanguage: defaultLocale,
-        outputLanguage: locale,
-        object: {
-          [keyToReplace]: newTranslation,
-        },
-        openai,
-        model: config.model,
-      })
+  // Update the key in all relevant namespaces and locales
+  for (const namespace of targetNamespaces) {
+    for (const locale of locales) {
+      let newValue = ""
+      if (locale === defaultLocale) {
+        newValue = newTranslation
+      } else {
+        const translation = await translateKey({
+          context,
+          inputLanguage: defaultLocale,
+          outputLanguage: locale,
+          object: {
+            [keyToReplace]: newTranslation,
+          },
+          openai,
+          model: config.model,
+        })
 
-      newValue = translation[keyToReplace]
+        newValue = translation[keyToReplace]
+      }
+
+      const existingKeys = await loadLocalesFile(loadPath, locale, namespace)
+      existingKeys[keyToReplace] = newValue
+      await writeLocalesFile(savePath, locale, namespace, existingKeys)
+
+      console.log(
+        `Updated "${keyToReplace}" in ${locale} (${namespace}): "${newValue}"`,
+      )
     }
-
-    const existingKeys = await loadLocalesFile(
-      loadPath,
-      locale,
-      defaultNamespace,
-    )
-
-    existingKeys[keyToReplace] = newValue
-
-    writeLocalesFile(savePath, locale, defaultNamespace, existingKeys)
-
-    console.log(
-      `The new translation for "${keyToReplace}" in ${locale} is "${newValue}".`,
-    )
   }
 }

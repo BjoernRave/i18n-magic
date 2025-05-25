@@ -1,6 +1,6 @@
 {
   "name": "@scoutello/i18n-magic",
-  "version": "0.18.0",
+  "version": "0.21.0",
   "private": false,
   "license": "MIT",
   "description": "Intelligent CLI toolkit that automates internationalization workflows with AI-powered translations for JavaScript/TypeScript projects",
@@ -42,10 +42,7 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": [
-    "dist",
-    "src"
-  ],
+  "files": ["dist", "src"],
   "scripts": {
     "analyze": "size-limit --why",
     "build": "tsc && echo '#!/usr/bin/env node' | cat - dist/cli.js > temp && mv temp dist/cli.js",
@@ -71,6 +68,7 @@
     "dotenv": "^16.5.0",
     "fast-glob": "^3.3.3",
     "i18next-scanner": "^4.6.0",
+    "minimatch": "^10.0.1",
     "prompts": "^2.4.2",
     "zod": "^3.24.2"
   },

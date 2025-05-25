@@ -1,11 +1,12 @@
 import glob from "fast-glob"
 import { Parser } from "i18next-scanner"
+import { minimatch } from "minimatch"
 import fs from "node:fs"
 import path from "node:path"
 import type OpenAI from "openai"
 import prompts from "prompts"
 import { languages } from "./languges"
-import type { GlobPatternConfig, Configuration } from "./types"
+import type { Configuration, GlobPatternConfig } from "./types"
 
 export const loadConfig = ({
   configPath = "i18n-magic.js",
@@ -197,21 +198,23 @@ export const extractGlobPatterns = (
 export const getNamespacesForFile = (
   filePath: string,
   globPatterns: (string | { pattern: string; namespaces: string[] })[],
+  defaultNamespace: string,
 ): string[] => {
   const matchingNamespaces: string[] = []
 
   for (const pattern of globPatterns) {
     if (typeof pattern === "object") {
-      // Use minimatch or similar logic to check if file matches pattern
-      const globPattern = pattern.pattern
-      // For now, using a simple includes check - in production you'd want proper glob matching
-      if (filePath.includes(globPattern.replace("**/*", "").replace("*", ""))) {
+      // Use minimatch for proper glob pattern matching
+      if (minimatch(filePath, pattern.pattern)) {
         matchingNamespaces.push(...pattern.namespaces)
       }
     }
   }
 
-  return [...new Set(matchingNamespaces)] // Remove duplicates
+  // If no specific namespaces found, use default namespace
+  return matchingNamespaces.length > 0
+    ? [...new Set(matchingNamespaces)]
+    : [defaultNamespace]
 }
 
 /**
@@ -236,13 +239,13 @@ export const getGlobPatternsForNamespace = (
   return patterns
 }
 
-export const getMissingKeys = async ({
+/**
+ * Extracts keys with their associated namespaces based on the files they're found in
+ */
+export const getKeysWithNamespaces = async ({
   globPatterns,
-  namespaces,
   defaultNamespace,
-  defaultLocale,
-  loadPath,
-}: Configuration) => {
+}: Pick<Configuration, "globPatterns" | "defaultNamespace">) => {
   const parser = new Parser({
     nsSeparator: false,
     keySeparator: false,
@@ -251,19 +254,70 @@ export const getMissingKeys = async ({
   const allPatterns = extractGlobPatterns(globPatterns)
   const files = await glob([...allPatterns, "!**/node_modules/**"])
 
-  const keys = []
+  const keysWithNamespaces: Array<{
+    key: string
+    namespaces: string[]
+    file: string
+  }> = []
 
   for (const file of files) {
     const content = fs.readFileSync(file, "utf-8")
+    const fileKeys: string[] = []
+
     parser.parseFuncFromString(content, { list: ["t"] }, (key: string) => {
-      keys.push(key)
+      fileKeys.push(key)
     })
+
+    // Get namespaces for this file
+    const fileNamespaces = getNamespacesForFile(
+      file,
+      globPatterns,
+      defaultNamespace,
+    )
+
+    // Add each key with its associated namespaces
+    for (const key of fileKeys) {
+      keysWithNamespaces.push({
+        key,
+        namespaces: fileNamespaces,
+        file,
+      })
+    }
   }
 
-  const uniqueKeys = removeDuplicatesFromArray(keys)
+  return keysWithNamespaces
+}
 
+export const getMissingKeys = async ({
+  globPatterns,
+  namespaces,
+  defaultNamespace,
+  defaultLocale,
+  loadPath,
+}: Configuration) => {
+  const keysWithNamespaces = await getKeysWithNamespaces({
+    globPatterns,
+    defaultNamespace,
+  })
   const newKeys = []
 
+  // Group keys by namespace
+  const keysByNamespace: Record<string, Set<string>> = {}
+
+  for (const { key, namespaces: keyNamespaces } of keysWithNamespaces) {
+    for (const namespace of keyNamespaces) {
+      if (!keysByNamespace[namespace]) {
+        keysByNamespace[namespace] = new Set()
+      }
+
+      const pureKey = getPureKey(key, namespace, namespace === defaultNamespace)
+      if (pureKey) {
+        keysByNamespace[namespace].add(pureKey)
+      }
+    }
+  }
+
+  // Check for missing keys in each namespace
   for (const namespace of namespaces) {
     const existingKeys = await loadLocalesFile(
       loadPath,
@@ -271,17 +325,13 @@ export const getMissingKeys = async ({
       namespace,
     )
 
-    console.log(Object.keys(existingKeys).length, "existing keys")
+    console.log(Object.keys(existingKeys).length, "existing keys in", namespace)
 
-    for (const key of uniqueKeys) {
-      const pureKey = getPureKey(key, namespace, namespace === defaultNamespace)
+    const keysForNamespace = keysByNamespace[namespace] || new Set()
 
-      if (!pureKey) {
-        continue
-      }
-
-      if (!existingKeys[pureKey]) {
-        newKeys.push({ key: pureKey, namespace })
+    for (const key of keysForNamespace) {
+      if (!existingKeys[key]) {
+        newKeys.push({ key, namespace })
       }
     }
   }

@@ -49,7 +49,7 @@ module.exports = {
     './components/**/*.tsx',
     './pages/**/*.tsx',
     './lib/**/*.ts',
-    // Namespace-specific patterns for pruned translations
+    // Namespace-specific patterns for automatic namespace assignment
     {
       pattern: './apps/dashboard/**/*.tsx',
       namespaces: ['dashboard'],
@@ -94,7 +94,7 @@ The `globPatterns` array supports two formats:
    './components/**/*.tsx';
    ```
 
-2. **Object patterns**: Patterns with namespace-specific configuration for pruned translations
+2. **Object patterns**: Patterns with namespace-specific configuration for automatic namespace assignment
    ```js
    {
      pattern: './apps/dashboard/**/*.tsx',
@@ -102,7 +102,7 @@ The `globPatterns` array supports two formats:
    }
    ```
 
-When using object patterns, translation keys found in files matching that pattern will be associated with the specified namespaces. This enables automatic creation of namespace-specific translation bundles.
+When using object patterns, translation keys found in files matching that pattern will be automatically saved to the specified namespaces. This enables automatic creation of namespace-specific translation files based on where the keys are used in your codebase.
 
 ### 4. Start using i18n Magic
 
@@ -179,16 +179,18 @@ Scan your codebase for missing translations and automatically generate them. Thi
 The command will:
 
 1. Scan all files matching your glob patterns for translation usage
-2. Identify missing translation keys in your default locale
-3. Prompt you to provide translations for each missing key
-4. Automatically translate to all other configured locales using AI
-5. Save the new translations to your JSON files
+2. Automatically determine which namespaces each key belongs to based on the file location
+3. Identify missing translation keys in your default locale
+4. Prompt you to provide translations for each missing key
+5. Automatically translate to all other configured locales using AI
+6. Save the new translations to the appropriate namespace files
 
 This is useful for:
 
 - Adding new translations during development
 - Ensuring all translation keys have corresponding values
 - Maintaining translation consistency across locales
+- Automatically organizing translations into the correct namespaces
 
 ### `replace`
 
@@ -196,10 +198,11 @@ Update an existing translation key with a new value and automatically translate 
 
 The command will:
 
-1. Prompt you to select or specify the translation key to replace
-2. Ask for the new translation value in your default locale
-3. Automatically translate the new value to all other configured locales using AI
-4. Update all translation files with the new values
+1. Automatically detect which namespaces the key is used in based on your codebase
+2. Prompt you to select or specify the translation key to replace
+3. Ask for the new translation value in your default locale
+4. Automatically translate the new value to all other configured locales using AI
+5. Update all relevant namespace files with the new values
 
 You can specify the key in two ways:
 
@@ -213,6 +216,7 @@ This is useful for:
 - Updating existing translations that need changes
 - Fixing translation errors across all locales
 - Maintaining consistency when modifying content
+- Automatically updating translations in all relevant namespaces
 
 ### `check-missing`
 
@@ -252,26 +256,6 @@ This is useful for:
 - Automated deployment workflows
 
 **Note**: This command works best when used with `disableTranslation: true` in your config to separate the scanning and translation phases.
-
-### `prune`
-
-Create a pruned namespace from an existing namespace, containing only the translation keys that are actually used in specific files. This is useful for creating optimized translation bundles for different parts of your application (e.g., dashboard, mobile app, etc.).
-
-The command will:
-
-1. Prompt you to select a source namespace to prune from
-2. Ask for a name for the new namespace
-3. Ask for glob patterns to scan for translation usage
-4. Extract all translation keys used in the matched files
-5. Create new translation files for all locales containing only the used keys
-
-This is particularly useful for:
-
-- Creating namespace-specific translation bundles
-- Reducing bundle size by including only necessary translations
-- Optimizing performance in micro-frontends or modular applications
-
-You can also automate this process using the `pruneNamespaces` configuration in your `i18n-magic.js` file (see configuration example above).
 
 ### `clean`
 

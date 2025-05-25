@@ -1,4 +1,3 @@
-import console from "console"
 import type { Configuration } from "../lib/types"
 import {
   checkAllKeysExist,
