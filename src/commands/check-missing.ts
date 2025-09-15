@@ -1,5 +1,5 @@
-import type { Configuration } from "../lib/types"
-import { getMissingKeys } from "../lib/utils"
+import type { Configuration } from "../lib/types.js"
+import { getMissingKeys } from "../lib/utils.js"
 
 export const checkMissing = async (config: Configuration) => {
   const newKeys = await getMissingKeys(config)

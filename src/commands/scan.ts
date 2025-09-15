@@ -1,4 +1,4 @@
-import type { Configuration } from "../lib/types"
+import type { Configuration } from "../lib/types.js"
 import {
   checkAllKeysExist,
   getMissingKeys,
@@ -6,8 +6,8 @@ import {
   loadLocalesFile,
   translateKey,
   writeLocalesFile,
-} from "../lib/utils"
-import { removeUnusedKeys } from "./clean"
+} from "../lib/utils.js"
+import { removeUnusedKeys } from "./clean.js"
 
 export const translateMissing = async (config: Configuration) => {
   const {

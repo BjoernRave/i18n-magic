@@ -1,10 +1,10 @@
-import type { Configuration } from "../lib/types"
+import type { Configuration } from "../lib/types.js"
 import {
   TranslationError,
   loadLocalesFile,
   translateKey,
   writeLocalesFile,
-} from "../lib/utils"
+} from "../lib/utils.js"
 
 export const syncLocales = async (config: Configuration) => {
   const {

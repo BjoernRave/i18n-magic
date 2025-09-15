@@ -1,4 +1,4 @@
-import type { Configuration } from "../lib/types"
+import type { Configuration } from "../lib/types.js"
 import {
   getKeysWithNamespaces,
   getPureKey,
@@ -6,7 +6,7 @@ import {
   loadLocalesFile,
   translateKey,
   writeLocalesFile,
-} from "../lib/utils"
+} from "../lib/utils.js"
 
 const getKeyToReplace = async (
   allAvailableKeys: Record<string, { namespace: string; value: string }[]>,

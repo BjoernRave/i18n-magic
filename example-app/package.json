@@ -1,0 +1,21 @@
+{
+  "name": "i18n-magic-example-app",
+  "version": "1.0.0",
+  "description": "Example application demonstrating i18n-magic namespace features",
+  "private": true,
+  "scripts": {
+    "i18n:scan": "node ../dist/cli.js scan",
+    "i18n:clean": "node ../dist/cli.js clean",
+    "i18n:sync": "node ../dist/cli.js sync-locales",
+    "i18n:check": "node ../dist/cli.js check-missing",
+    "i18n:debug": "DEBUG_NAMESPACE_MATCHING=true node ../dist/cli.js scan"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "react": "^18.0.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,14 +1,14 @@
 import { Command } from "commander"
 import dotenv from "dotenv"
 import OpenAI from "openai"
-import { checkMissing } from "./commands/check-missing"
-import { removeUnusedKeys } from "./commands/clean"
+import { checkMissing } from "./commands/check-missing.js"
+import { removeUnusedKeys } from "./commands/clean.js"
 
-import { replaceTranslation } from "./commands/replace"
-import { translateMissing } from "./commands/scan"
-import { syncLocales } from "./commands/sync-locales"
-import type { CommandType, Configuration } from "./lib/types"
-import { loadConfig } from "./lib/utils"
+import { replaceTranslation } from "./commands/replace.js"
+import { translateMissing } from "./commands/scan.js"
+import { syncLocales } from "./commands/sync-locales.js"
+import type { CommandType, Configuration } from "./lib/types.js"
+import { loadConfig } from "./lib/utils.js"
 
 const program = new Command()
 

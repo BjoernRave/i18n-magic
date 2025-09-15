@@ -1,10 +1,10 @@
-import type { Configuration } from "../lib/types"
+import type { Configuration } from "../lib/types.js"
 import {
   getKeysWithNamespaces,
   getPureKey,
   loadLocalesFile,
   writeLocalesFile,
-} from "../lib/utils"
+} from "../lib/utils.js"
 
 export const removeUnusedKeys = async (config: Configuration) => {
   const {

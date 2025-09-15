@@ -3,7 +3,7 @@
   "include": ["src", "types"],
   "compilerOptions": {
     "target": "es2020",
-    "module": "commonjs",
+    "module": "esnext",
     "moduleResolution": "node",
     "outDir": "dist",
     "rootDir": "src",
@@ -14,6 +14,8 @@
     "allowSyntheticDefaultImports": true,
     "strict": false,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "allowImportingTsExtensions": false,
+    "noEmit": false
   }
 }

@@ -5,12 +5,12 @@ import fs from "node:fs"
 import path from "node:path"
 import type OpenAI from "openai"
 import prompts from "prompts"
-import { languages } from "./languges"
-import type { Configuration, GlobPatternConfig } from "./types"
+import { languages } from "./languges.js"
+import type { Configuration, GlobPatternConfig } from "./types.js"
 
-export const loadConfig = ({
+export const loadConfig = async ({
   configPath = "i18n-magic.js",
-}: { configPath: string }) => {
+}: { configPath?: string } = {}) => {
   const filePath = path.join(process.cwd(), configPath)
 
   if (!fs.existsSync(filePath)) {
@@ -19,7 +19,9 @@ export const loadConfig = ({
   }
 
   try {
-    const config = require(filePath)
+    // Use dynamic import for ESM compatibility
+    const configModule = await import(`file://${filePath}`)
+    const config = configModule.default || configModule
     // Validate config if needed
     return config
   } catch (error) {
@@ -66,7 +68,7 @@ export const translateKey = async ({
   // Translate each chunk
   for (const chunk of chunks) {
     const chunkObject = Object.fromEntries(chunk)
-    const completion = await openai.beta.chat.completions.parse({
+    const completion = await openai.chat.completions.create({
       model,
       messages: [
         {
@@ -117,6 +119,12 @@ export const loadLocalesFile = async (
       .replace("{{lng}}", locale)
       .replace("{{ns}}", namespace)
 
+    // Check if file exists, return empty object if it doesn't
+    if (!fs.existsSync(resolvedPath)) {
+      console.log(`📄 Creating new namespace file: ${resolvedPath}`)
+      return {}
+    }
+
     const content = fs.readFileSync(resolvedPath, "utf-8")
     try {
       const json = JSON.parse(content)
@@ -150,6 +158,12 @@ export const writeLocalesFile = async (
     const resolvedSavePath = savePath
       .replace("{{lng}}", locale)
       .replace("{{ns}}", namespace)
+
+    // Ensure directory exists
+    const dir = path.dirname(resolvedSavePath)
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true })
+    }
 
     fs.writeFileSync(resolvedSavePath, JSON.stringify(data, null, 2))
 
@@ -202,10 +216,35 @@ export const getNamespacesForFile = (
 ): string[] => {
   const matchingNamespaces: string[] = []
 
+  // Normalize the file path - remove leading ./ if present
+  const normalizedFilePath = filePath.replace(/^\.\//, "")
+
   for (const pattern of globPatterns) {
     if (typeof pattern === "object") {
-      // Use minimatch for proper glob pattern matching
-      if (minimatch(filePath, pattern.pattern)) {
+      // Normalize the pattern - remove leading ./ if present
+      const normalizedPattern = pattern.pattern.replace(/^\.\//, "")
+
+      // Try matching with both the original and normalized paths/patterns
+      const isMatch =
+        minimatch(filePath, pattern.pattern) ||
+        minimatch(normalizedFilePath, pattern.pattern) ||
+        minimatch(filePath, normalizedPattern) ||
+        minimatch(normalizedFilePath, normalizedPattern)
+
+      // Debug logging to help identify the issue
+      if (process.env.DEBUG_NAMESPACE_MATCHING) {
+        console.log(
+          `Checking file: ${filePath} (normalized: ${normalizedFilePath})`,
+        )
+        console.log(
+          `Against pattern: ${pattern.pattern} (normalized: ${normalizedPattern})`,
+        )
+        console.log(`Match result: ${isMatch}`)
+        console.log(`Namespaces: ${pattern.namespaces.join(", ")}`)
+        console.log("---")
+      }
+
+      if (isMatch) {
         matchingNamespaces.push(...pattern.namespaces)
       }
     }
@@ -254,6 +293,16 @@ export const getKeysWithNamespaces = async ({
   const allPatterns = extractGlobPatterns(globPatterns)
   const files = await glob([...allPatterns, "!**/node_modules/**"])
 
+  // Debug logging
+  if (process.env.DEBUG_NAMESPACE_MATCHING) {
+    console.log(`Found ${files.length} files matching patterns:`)
+    for (const file of files.slice(0, 10)) {
+      console.log(`  ${file}`)
+    }
+    if (files.length > 10) console.log(`  ... and ${files.length - 10} more`)
+    console.log("---")
+  }
+
   const keysWithNamespaces: Array<{
     key: string
     namespaces: string[]
@@ -274,6 +323,14 @@ export const getKeysWithNamespaces = async ({
       globPatterns,
       defaultNamespace,
     )
+
+    // Debug logging
+    if (process.env.DEBUG_NAMESPACE_MATCHING && fileKeys.length > 0) {
+      console.log(`File: ${file}`)
+      console.log(`Keys found: ${fileKeys.length}`)
+      console.log(`Assigned namespaces: ${fileNamespaces.join(", ")}`)
+      console.log("---")
+    }
 
     // Add each key with its associated namespaces
     for (const key of fileKeys) {
@@ -301,6 +358,8 @@ export const getMissingKeys = async ({
   })
   const newKeys = []
 
+  console.log(`🔍 Found ${keysWithNamespaces.length} total key instances`)
+
   // Group keys by namespace
   const keysByNamespace: Record<string, Set<string>> = {}
 
@@ -317,6 +376,11 @@ export const getMissingKeys = async ({
     }
   }
 
+  // Show summary of keys by namespace
+  for (const [namespace, keys] of Object.entries(keysByNamespace)) {
+    console.log(`📦 ${namespace}: ${keys.size} unique keys`)
+  }
+
   // Check for missing keys in each namespace
   for (const namespace of namespaces) {
     const existingKeys = await loadLocalesFile(
@@ -328,6 +392,9 @@ export const getMissingKeys = async ({
     console.log(Object.keys(existingKeys).length, "existing keys in", namespace)
 
     const keysForNamespace = keysByNamespace[namespace] || new Set()
+    console.log(
+      `🔍 Checking ${keysForNamespace.size} keys for namespace ${namespace}`,
+    )
 
     for (const key of keysForNamespace) {
       if (!existingKeys[key]) {
