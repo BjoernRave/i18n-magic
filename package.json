@@ -1,6 +1,6 @@
 {
   "name": "@scoutello/i18n-magic",
-  "version": "0.26.0",
+  "version": "0.27.0",
   "private": false,
   "license": "MIT",
   "description": "Intelligent CLI toolkit that automates internationalization workflows with AI-powered translations for JavaScript/TypeScript projects",
@@ -60,7 +60,7 @@
     "node": ">=16"
   },
   "peerDependencies": {
-    "openai": "^5.20.2"
+    "openai": "^5.20.3"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
@@ -74,15 +74,14 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@biomejs/biome": "1.9.4",
+    "@biomejs/biome": "2.2.4",
     "@tsconfig/recommended": "^1.0.8",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.12.12",
     "@types/prompts": "^2.4.9",
     "jest": "^29.7.0",
     "openai": "^5.20.2",
-    "tslib": "^2.8.1",
-    "typescript": "^5.8.3"
+    "typescript": "^5.9.2"
   },
   "packageManager": "pnpm@10.2.1+sha512.398035c7bd696d0ba0b10a688ed558285329d27ea994804a52bad9167d8e3a72bcb993f9699585d3ca25779ac64949ef422757a6c31102c12ab932e5cbe5cc92"
 }

@@ -372,6 +372,9 @@ export const getMissingKeys = async ({
       const pureKey = getPureKey(key, namespace, namespace === defaultNamespace)
       if (pureKey) {
         keysByNamespace[namespace].add(pureKey)
+      } else if (!key.includes(":")) {
+        // For file-based namespace assignment, accept keys without namespace prefixes
+        keysByNamespace[namespace].add(key)
       }
     }
   }
