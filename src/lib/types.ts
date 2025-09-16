@@ -29,7 +29,7 @@ export interface Configuration {
   locales: string[]
   globPatterns: (string | GlobPatternConfig)[]
   context?: string
-  disableTranslation?: boolean
+  disableTranslationDuringScan?: boolean
   autoClear?: boolean
   OPENAI_API_KEY?: string
   GEMINI_API_KEY?: string

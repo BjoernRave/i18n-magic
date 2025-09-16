@@ -3,6 +3,8 @@ import {
   checkAllKeysExist,
   getMissingKeys,
   getTextInput,
+  findExistingTranslation,
+  findExistingTranslations,
   loadLocalesFile,
   translateKey,
   writeLocalesFile,
@@ -18,7 +20,7 @@ export const translateMissing = async (config: Configuration) => {
     locales,
     context,
     openai,
-    disableTranslation,
+    disableTranslationDuringScan,
     autoClear,
   } = config
 
@@ -47,14 +49,40 @@ export const translateMissing = async (config: Configuration) => {
 
   const newKeysWithDefaultLocale = []
 
+  // Check for existing translations in parallel
+  const keysList = newKeys.map((k) => k.key)
+  const existingTranslationResults = await findExistingTranslations(
+    keysList,
+    namespaces,
+    defaultLocale,
+    loadPath,
+  )
+
+  const reusedKeys: string[] = []
   for (const newKey of newKeys) {
-    const answer = await getTextInput(newKey.key)
+    const existingValue = existingTranslationResults[newKey.key]
+
+    let answer: string
+    if (existingValue) {
+      reusedKeys.push(newKey.key)
+      answer = existingValue
+    } else {
+      answer = await getTextInput(newKey.key, newKey.namespaces)
+    }
 
     newKeysWithDefaultLocale.push({
       key: newKey.key,
       namespace: newKey.namespace,
+      namespaces: newKey.namespaces,
       value: answer,
     })
+  }
+
+  // Batch log reused keys
+  if (reusedKeys.length > 0) {
+    console.log(
+      `🔄 Auto-reused ${reusedKeys.length} existing values from other namespaces`,
+    )
   }
 
   const newKeysObject = newKeysWithDefaultLocale.reduce((prev, next) => {
@@ -63,7 +91,7 @@ export const translateMissing = async (config: Configuration) => {
     return prev
   }, {})
 
-  const allLocales = disableTranslation ? [defaultLocale] : locales
+  const allLocales = disableTranslationDuringScan ? [defaultLocale] : locales
 
   for (const locale of allLocales) {
     let translatedValues = {}
@@ -84,8 +112,8 @@ export const translateMissing = async (config: Configuration) => {
     for (const namespace of namespaces) {
       const existingKeys = await loadLocalesFile(loadPath, locale, namespace)
 
-      const relevantKeys = newKeysWithDefaultLocale.filter(
-        (key) => key.namespace === namespace,
+      const relevantKeys = newKeysWithDefaultLocale.filter((key) =>
+        key.namespaces?.includes(namespace),
       )
 
       if (relevantKeys.length === 0) {

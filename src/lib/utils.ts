@@ -362,6 +362,8 @@ export const getMissingKeys = async ({
 
   // Group keys by namespace
   const keysByNamespace: Record<string, Set<string>> = {}
+  // Track which namespaces each key belongs to
+  const keyToNamespaces: Record<string, Set<string>> = {}
 
   for (const { key, namespaces: keyNamespaces } of keysWithNamespaces) {
     for (const namespace of keyNamespaces) {
@@ -370,11 +372,16 @@ export const getMissingKeys = async ({
       }
 
       const pureKey = getPureKey(key, namespace, namespace === defaultNamespace)
-      if (pureKey) {
-        keysByNamespace[namespace].add(pureKey)
-      } else if (!key.includes(":")) {
-        // For file-based namespace assignment, accept keys without namespace prefixes
-        keysByNamespace[namespace].add(key)
+      const finalKey = pureKey || (!key.includes(":") ? key : null)
+
+      if (finalKey) {
+        keysByNamespace[namespace].add(finalKey)
+
+        // Track which namespaces this key belongs to
+        if (!keyToNamespaces[finalKey]) {
+          keyToNamespaces[finalKey] = new Set()
+        }
+        keyToNamespaces[finalKey].add(namespace)
       }
     }
   }
@@ -384,16 +391,39 @@ export const getMissingKeys = async ({
     console.log(`📦 ${namespace}: ${keys.size} unique keys`)
   }
 
+  // Load all existing keys for all namespaces in parallel
+  const existingKeysByNamespace: Record<string, Record<string, string>> = {}
+  const loadPromises = namespaces.map(async (namespace) => {
+    try {
+      const keys = await loadLocalesFile(loadPath, defaultLocale, namespace)
+      existingKeysByNamespace[namespace] = keys
+      return { namespace, keyCount: Object.keys(keys).length }
+    } catch (error) {
+      existingKeysByNamespace[namespace] = {}
+      return { namespace, keyCount: 0 }
+    }
+  })
+
+  const loadResults = await Promise.all(loadPromises)
+
+  // Batch log existing key counts
+  for (const { namespace, keyCount } of loadResults) {
+    console.log(`📦 ${namespace}: ${keyCount} existing keys`)
+  }
+
+  // Track unique missing keys to avoid duplicates
+  const uniqueMissingKeys = new Map<
+    string,
+    {
+      key: string
+      namespaces: string[]
+      primaryNamespace: string
+    }
+  >()
+
   // Check for missing keys in each namespace
   for (const namespace of namespaces) {
-    const existingKeys = await loadLocalesFile(
-      loadPath,
-      defaultLocale,
-      namespace,
-    )
-
-    console.log(Object.keys(existingKeys).length, "existing keys in", namespace)
-
+    const existingKeys = existingKeysByNamespace[namespace]
     const keysForNamespace = keysByNamespace[namespace] || new Set()
     console.log(
       `🔍 Checking ${keysForNamespace.size} keys for namespace ${namespace}`,
@@ -401,19 +431,122 @@ export const getMissingKeys = async ({
 
     for (const key of keysForNamespace) {
       if (!existingKeys[key]) {
-        newKeys.push({ key, namespace })
+        if (uniqueMissingKeys.has(key)) {
+          // Add this namespace to the existing entry
+          const existing = uniqueMissingKeys.get(key)
+          if (existing && !existing.namespaces.includes(namespace)) {
+            existing.namespaces.push(namespace)
+          }
+        } else {
+          // Create new entry with all namespaces this key belongs to (that are missing)
+          const allNamespaces = Array.from(
+            keyToNamespaces[key] || [namespace],
+          ).filter((ns) => !existingKeysByNamespace[ns]?.[key])
+
+          uniqueMissingKeys.set(key, {
+            key,
+            namespaces: allNamespaces,
+            primaryNamespace: namespace,
+          })
+        }
       }
     }
+  }
+
+  // Convert to the expected format
+  for (const {
+    key,
+    namespaces: keyNamespaces,
+    primaryNamespace,
+  } of uniqueMissingKeys.values()) {
+    newKeys.push({
+      key,
+      namespace: primaryNamespace,
+      namespaces: keyNamespaces,
+    })
   }
 
   return newKeys
 }
 
-export const getTextInput = async (prompt: string) => {
+/**
+ * Find existing translation for a key across all namespaces
+ */
+export const findExistingTranslation = async (
+  key: string,
+  namespaces: string[],
+  locale: string,
+  loadPath:
+    | string
+    | ((locale: string, namespace: string) => Promise<Record<string, string>>),
+): Promise<string | null> => {
+  for (const namespace of namespaces) {
+    try {
+      const existingKeys = await loadLocalesFile(loadPath, locale, namespace)
+      if (existingKeys[key]) {
+        return existingKeys[key]
+      }
+    } catch (error) {
+      // Continue checking other namespaces if one fails to load
+    }
+  }
+  return null
+}
+
+/**
+ * Find existing translations for multiple keys in parallel
+ */
+export const findExistingTranslations = async (
+  keys: string[],
+  namespaces: string[],
+  locale: string,
+  loadPath:
+    | string
+    | ((locale: string, namespace: string) => Promise<Record<string, string>>),
+): Promise<Record<string, string | null>> => {
+  // Load all namespace files in parallel first
+  const namespaceKeys: Record<string, Record<string, string>> = {}
+  const loadPromises = namespaces.map(async (namespace) => {
+    try {
+      const existingKeys = await loadLocalesFile(loadPath, locale, namespace)
+      namespaceKeys[namespace] = existingKeys
+    } catch (error) {
+      namespaceKeys[namespace] = {}
+    }
+  })
+
+  await Promise.all(loadPromises)
+
+  // Now find translations for all keys
+  const results: Record<string, string | null> = {}
+
+  for (const key of keys) {
+    let found = false
+    for (const namespace of namespaces) {
+      if (namespaceKeys[namespace]?.[key]) {
+        results[key] = namespaceKeys[namespace][key]
+        found = true
+        break
+      }
+    }
+    if (!found) {
+      results[key] = null
+    }
+  }
+
+  return results
+}
+
+export const getTextInput = async (key: string, namespaces?: string[]) => {
+  const namespaceInfo =
+    namespaces && namespaces.length > 0
+      ? ` (will be added to: ${namespaces.join(", ")})`
+      : ""
+
   const input = await prompts({
     name: "value",
     type: "text",
-    message: prompt,
+    message: `${key}${namespaceInfo}`,
     onState: (state) => {
       if (state.aborted) {
         process.nextTick(() => {
@@ -434,62 +567,68 @@ export const checkAllKeysExist = async ({
   context,
   openai,
   savePath,
-  disableTranslation,
+  disableTranslationDuringScan,
   model,
 }: Configuration) => {
-  if (disableTranslation) {
+  if (disableTranslationDuringScan) {
     return
   }
 
-  for (const namespace of namespaces) {
+  // Parallelize namespace processing
+  const namespacePromises = namespaces.map(async (namespace) => {
     const defaultLocaleKeys = await loadLocalesFile(
       loadPath,
       defaultLocale,
       namespace,
     )
 
-    for (const locale of locales) {
-      if (locale === defaultLocale) continue
+    // Parallelize locale processing within each namespace
+    const localePromises = locales
+      .filter((locale) => locale !== defaultLocale)
+      .map(async (locale) => {
+        const localeKeys = await loadLocalesFile(loadPath, locale, namespace)
+        const missingKeys: Record<string, string> = {}
 
-      const localeKeys = await loadLocalesFile(loadPath, locale, namespace)
-      const missingKeys: Record<string, string> = {}
-
-      // Check which keys from default locale are missing in current locale
-      for (const [key, value] of Object.entries(defaultLocaleKeys)) {
-        if (!localeKeys[key]) {
-          missingKeys[key] = value
-        }
-      }
-
-      // If there are missing keys, translate them
-      if (Object.keys(missingKeys).length > 0) {
-        console.log(
-          `Found ${Object.keys(missingKeys).length} missing keys in ${locale} (namespace: ${namespace})`,
-        )
-
-        const translatedValues = await translateKey({
-          inputLanguage: defaultLocale,
-          outputLanguage: locale,
-          context,
-          object: missingKeys,
-          openai,
-          model,
-        })
-
-        // Merge translated values with existing ones
-        const updatedLocaleKeys = {
-          ...localeKeys,
-          ...translatedValues,
+        // Check which keys from default locale are missing in current locale
+        for (const [key, value] of Object.entries(defaultLocaleKeys)) {
+          if (!localeKeys[key]) {
+            missingKeys[key] = value
+          }
         }
 
-        // Save the updated translations
-        writeLocalesFile(savePath, locale, namespace, updatedLocaleKeys)
-        console.log(
-          `✓ Translated and saved missing keys for ${locale} (namespace: ${namespace})`,
-        )
-      }
-    }
-  }
+        // If there are missing keys, translate them
+        if (Object.keys(missingKeys).length > 0) {
+          console.log(
+            `Found ${Object.keys(missingKeys).length} missing keys in ${locale} (namespace: ${namespace})`,
+          )
+
+          const translatedValues = await translateKey({
+            inputLanguage: defaultLocale,
+            outputLanguage: locale,
+            context,
+            object: missingKeys,
+            openai,
+            model,
+          })
+
+          // Merge translated values with existing ones
+          const updatedLocaleKeys = {
+            ...localeKeys,
+            ...translatedValues,
+          }
+
+          // Save the updated translations
+          writeLocalesFile(savePath, locale, namespace, updatedLocaleKeys)
+          console.log(
+            `✓ Translated and saved missing keys for ${locale} (namespace: ${namespace})`,
+          )
+        }
+      })
+
+    await Promise.all(localePromises)
+  })
+
+  await Promise.all(namespacePromises)
 }
 
 export class TranslationError extends Error {

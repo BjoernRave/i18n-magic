@@ -1,6 +1,6 @@
 {
   "name": "@scoutello/i18n-magic",
-  "version": "0.27.0",
+  "version": "0.34.0",
   "private": false,
   "license": "MIT",
   "description": "Intelligent CLI toolkit that automates internationalization workflows with AI-powered translations for JavaScript/TypeScript projects",

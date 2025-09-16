@@ -79,7 +79,7 @@ module.exports = {
   model: 'gemini-2.0-flash-lite', // or any OpenAI/Gemini model like 'gpt-4.1-mini'
   OPENAI_API_KEY: '.', // Alternative to using .env file
   GEMINI_API_KEY: '', // Alternative to using .env file
-  disableTranslation: false, // Set to true to skip automatic translations during the scan step. Useful if you want to sync the other languages during CI/CD using sync.
+  disableTranslationDuringScan: false, // Set to true to skip automatic translations during the scan step. Useful if you want to sync the other languages during CI/CD using sync.
   autoClear: true, // When using the scan command, always run the clean before
 };
 ```
@@ -255,7 +255,7 @@ This is useful for:
 - Maintaining translation parity across languages
 - Automated deployment workflows
 
-**Note**: This command works best when used with `disableTranslation: true` in your config to separate the scanning and translation phases.
+**Note**: This command works best when used with `disableTranslationDuringScan: true` in your config to separate the scanning and translation phases. The sync command will always translate regardless of this setting.
 
 ### `clean`
 

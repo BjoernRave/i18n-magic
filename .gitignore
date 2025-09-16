@@ -8,4 +8,3 @@ dist
 .env
 test.tsx
 locales
-i18n-magic.js
