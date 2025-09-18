@@ -69,7 +69,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ user }) => {
       <section className="mobile-tips">
         <h2>{t("tipsTitle")}</h2>
         <div className="tip-card">
-          <p>{t("enableBiometrics")}</p>
+          <p>{{t.rich("acceptTerms", {
+                terms: (chunks) => (
+                  <a
+                    className="text-blue-500 underline"
+                    href={`https://scoutello.com/${user.language}/terms-of-service`}
+                    target="_blank" rel="noreferrer"
+                  >
+                    {chunks}
+                  </a>
+                ),
+              })}</p>
           <button className="tip-action">{t("learnMore")}</button>
         </div>
       </section>

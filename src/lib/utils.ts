@@ -313,9 +313,13 @@ export const getKeysWithNamespaces = async ({
     const content = fs.readFileSync(file, "utf-8")
     const fileKeys: string[] = []
 
-    parser.parseFuncFromString(content, { list: ["t"] }, (key: string) => {
-      fileKeys.push(key)
-    })
+    parser.parseFuncFromString(
+      content,
+      { list: ["t", "t.rich"] },
+      (key: string) => {
+        fileKeys.push(key)
+      },
+    )
 
     // Get namespaces for this file
     const fileNamespaces = getNamespacesForFile(
