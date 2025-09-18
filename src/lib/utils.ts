@@ -34,6 +34,30 @@ export function removeDuplicatesFromArray<T>(arr: T[]): T[] {
   return arr.filter((item, index) => arr.indexOf(item) === index)
 }
 
+/**
+ * Extracts translation keys using regex fallback when parser fails (e.g., with JSX)
+ * Handles both t("key") and t.rich("key") patterns
+ */
+const extractKeysWithRegex = (content: string): string[] => {
+  const keys: string[] = []
+  
+  // Regex patterns for t() and t.rich() calls
+  // This matches: t("key"), t('key'), t.rich("key"), t.rich('key'), t(`key`)
+  const patterns = [
+    /\bt\s*\(\s*["'`]([^"'`]+)["'`]/g,        // t("key") or t('key') or t(`key`)
+    /\bt\.rich\s*\(\s*["'`]([^"'`]+)["'`]/g,  // t.rich("key") or t.rich('key') or t.rich(`key`)
+  ]
+  
+  for (const pattern of patterns) {
+    let match
+    while ((match = pattern.exec(content)) !== null) {
+      keys.push(match[1])
+    }
+  }
+  
+  return keys
+}
+
 export const translateKey = async ({
   inputLanguage,
   context,
@@ -313,13 +337,29 @@ export const getKeysWithNamespaces = async ({
     const content = fs.readFileSync(file, "utf-8")
     const fileKeys: string[] = []
 
-    parser.parseFuncFromString(
-      content,
-      { list: ["t", "t.rich"] },
-      (key: string) => {
-        fileKeys.push(key)
-      },
-    )
+    // Temporarily suppress console.error to avoid i18next-scanner JSX errors
+    const originalConsoleError = console.error
+    console.error = () => {}
+    
+    try {
+      parser.parseFuncFromString(
+        content,
+        { list: ["t", "t.rich"] },
+        (key: string) => {
+          fileKeys.push(key)
+        },
+      )
+    } catch (error) {
+      // If parsing fails (e.g., due to JSX), try to extract keys using regex fallback
+      if (process.env.DEBUG_NAMESPACE_MATCHING) {
+        console.warn(`Parser failed for ${file}, using regex fallback`)
+      }
+      const regexKeys = extractKeysWithRegex(content)
+      fileKeys.push(...regexKeys)
+    } finally {
+      // Always restore console.error
+      console.error = originalConsoleError
+    }
 
     // Get namespaces for this file
     const fileNamespaces = getNamespacesForFile(
