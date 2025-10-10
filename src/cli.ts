@@ -76,9 +76,9 @@ for (const command of commands) {
 
     const isGemini = (config.model as string)?.includes("gemini")
 
-    // Get API key from environment or config
-    const openaiKey = res.parsed.OPENAI_API_KEY || config.OPENAI_API_KEY
-    const geminiKey = res.parsed.GEMINI_API_KEY || config.GEMINI_API_KEY
+    // Get API key from config only
+    const openaiKey = config.OPENAI_API_KEY
+    const geminiKey = config.GEMINI_API_KEY
 
     // Select appropriate key based on model type
     const key = isGemini ? geminiKey : openaiKey
@@ -86,7 +86,7 @@ for (const command of commands) {
     if (!key) {
       const keyType = isGemini ? "GEMINI_API_KEY" : "OPENAI_API_KEY"
       console.error(
-        `Please provide a${isGemini ? " Gemini" : "n OpenAI"} API key in your .env file or config, called ${keyType}.`,
+        `Please provide a${isGemini ? " Gemini" : "n OpenAI"} API key in your i18n-magic config file as ${keyType}.`,
       )
       process.exit(1)
     }

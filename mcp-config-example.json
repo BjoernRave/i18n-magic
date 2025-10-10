@@ -1,0 +1,71 @@
+{
+  "mcpServers": {
+    "i18n-magic": {
+      "command": "node",
+      "args": [
+        "./node_modules/@scoutello/i18n-magic/dist/mcp-server.js"
+      ]
+    }
+  }
+}
+
+// CONFIGURATION NOTES:
+// 
+// ===== SIMPLE CONFIGURATION (RECOMMENDED) =====
+// Just point to the executable - no paths needed!
+// The server will automatically find your i18n-magic.js by traversing up from node_modules.
+//
+// {
+//   "i18n-magic": {
+//     "command": "node",
+//     "args": ["./node_modules/@scoutello/i18n-magic/dist/mcp-server.js"]
+//   }
+// }
+//
+// This works because when installed in node_modules, the server can traverse up
+// the directory tree to find where your i18n-magic.js config file exists.
+//
+// ===== ADVANCED OPTIONS (Only if auto-detection doesn't work) =====
+//
+// Option 1: Using "cwd" parameter
+// {
+//   "i18n-magic": {
+//     "command": "node",
+//     "args": ["./node_modules/@scoutello/i18n-magic/dist/mcp-server.js"],
+//     "cwd": "/Users/yourname/projects/your-app"
+//   }
+// }
+//
+// Option 2: Using --project-root CLI argument
+// {
+//   "i18n-magic": {
+//     "command": "node",
+//     "args": [
+//       "./node_modules/@scoutello/i18n-magic/dist/mcp-server.js",
+//       "--project-root",
+//       "/Users/yourname/projects/your-app"
+//     ]
+//   }
+// }
+//
+// Option 3: Using environment variable
+// {
+//   "i18n-magic": {
+//     "command": "node",
+//     "args": ["./node_modules/@scoutello/i18n-magic/dist/mcp-server.js"],
+//     "env": {
+//       "I18N_MCP_PROJECT_ROOT": "/Users/yourname/projects/your-app"
+//     }
+//   }
+// }
+//
+// Global installation example:
+// {
+//   "i18n-magic": {
+//     "command": "i18n-magic-mcp",
+//     "cwd": "/Users/yourname/projects/your-app"
+//   }
+// }
+
+
+

@@ -7,7 +7,7 @@ export { translateMissing } from "./commands/scan.js"
 export { syncLocales } from "./commands/sync-locales.js"
 
 // Export utility functions
-export { loadConfig } from "./lib/utils.js"
+export { addTranslationKey, loadConfig } from "./lib/utils.js"
 
 // Export types
 

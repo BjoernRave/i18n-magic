@@ -11,6 +11,7 @@ i18n Magic streamlines the entire translation management process for your JavaSc
 - **🔄 Sync & Maintain**: Keeps all your locales in perfect sync
 - **🧹 Clean & Optimize**: Removes unused translations and creates optimized bundles
 - **⚡ CI/CD Ready**: Perfect for automated workflows and deployment pipelines
+- **🔌 MCP Integration**: Connect with Cursor and other LLMs to add translation keys on the fly
 
 ## 📋 Requirements
 
@@ -273,3 +274,118 @@ This is useful for:
 - Keeping translation files clean and maintainable
 - Reducing bundle size by removing dead translations
 - Regular maintenance in CI/CD pipelines
+
+## 🔌 MCP Server Integration
+
+i18n Magic includes an MCP (Model Context Protocol) server that allows LLMs like Cursor to add missing translation keys directly to your translation files. This enables a seamless workflow where your AI assistant can identify and add missing translations while you code.
+
+### Setting up the MCP Server
+
+1. **Install i18n-magic** (if not already installed):
+
+```bash
+npm install -g @scoutello/i18n-magic
+# or locally in your project
+npm install @scoutello/i18n-magic
+```
+
+2. **Configure Cursor** (or other MCP-compatible tools):
+
+Open Cursor settings and add this to your MCP configuration:
+
+**For global installation:**
+```json
+{
+  "i18n-magic": {
+    "command": "i18n-magic-mcp",
+    "cwd": "/absolute/path/to/your/project"
+  }
+}
+```
+
+**For local installation:**
+```json
+{
+  "i18n-magic": {
+    "command": "node",
+    "args": ["./node_modules/@scoutello/i18n-magic/dist/mcp-server.js"],
+    "cwd": "/absolute/path/to/your/project"
+  }
+}
+```
+
+**⚠️ CRITICAL Configuration**: 
+- Replace `/absolute/path/to/your/project` with **YOUR PROJECT DIRECTORY** containing `i18n-magic.js`
+- **DO NOT** use the i18n-magic package directory - use where YOU use translations
+- The `cwd` parameter must be an absolute path
+- If you get "Connection closed" error, verify your `cwd` points to the correct directory
+
+### Troubleshooting MCP Setup
+
+**Error: "MCP error -32000: Connection closed"**
+
+This means the server couldn't find your configuration. Check:
+
+1. ✅ `cwd` points to YOUR project directory (not the i18n-magic package)
+2. ✅ `i18n-magic.js` exists in that directory
+3. ✅ Paths are absolute
+
+Test your setup:
+```bash
+# Navigate to your project
+cd /your/project/path
+
+# Verify config exists
+ls -la i18n-magic.js
+
+# Test the MCP server manually
+node ./node_modules/@scoutello/i18n-magic/dist/mcp-server.js
+```
+
+You should see: `[i18n-magic MCP] Server started and ready to accept connections`
+
+### How it works
+
+**Workflow 1: Adding individual keys**
+1. While coding, the LLM identifies a missing translation key
+2. The LLM calls the `add_translation_key` tool to add it with an English value
+3. The key is automatically added to the `en` locale (regardless of your `defaultLocale`)
+4. Run `i18n-magic sync` to translate the key to all other configured locales
+
+**Workflow 2: Batch checking missing keys**
+1. The LLM calls `list_untranslated_keys` to get a complete overview
+2. Review all missing keys grouped by namespace
+3. Add keys using `add_translation_key` or run `i18n-magic scan` for batch processing
+4. Run `i18n-magic sync` to translate all new keys
+
+### Available MCP Tools
+
+**add_translation_key**: Add a new translation key with an English value
+
+Parameters:
+- `key` (required): The translation key (e.g., "welcomeMessage")
+- `value` (required): The English text value
+- `namespace` (optional): Target namespace (defaults to your defaultNamespace)
+
+Example:
+```json
+{
+  "key": "user.profileUpdated",
+  "value": "Your profile has been updated successfully",
+  "namespace": "common"
+}
+```
+
+**list_untranslated_keys**: List all translation keys used in the codebase that are not yet defined
+
+Parameters:
+- `namespace` (optional): Check a specific namespace only (defaults to all namespaces)
+
+Example:
+```json
+{}
+```
+
+Response shows all missing keys grouped by namespace with counts and next steps.
+
+For detailed setup instructions and troubleshooting, see [MCP-SERVER.md](./MCP-SERVER.md).

@@ -1,6 +1,7 @@
 {
+
   "name": "@scoutello/i18n-magic",
-  "version": "0.36.0",
+  "version": "0.50.0",
   "private": false,
   "license": "MIT",
   "description": "Intelligent CLI toolkit that automates internationalization workflows with AI-powered translations for JavaScript/TypeScript projects",
@@ -36,7 +37,10 @@
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "types": "dist/index.d.ts",
-  "bin": "dist/cli.js",
+  "bin": {
+    "i18n-magic": "dist/cli.js",
+    "i18n-magic-mcp": "dist/mcp-server.js"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -46,8 +50,9 @@
   "files": ["dist", "src"],
   "scripts": {
     "analyze": "size-limit --why",
-    "build": "tsc && echo '#!/usr/bin/env node' | cat - dist/cli.js > temp && mv temp dist/cli.js && chmod +x dist/cli.js",
+    "build": "tsc && echo '#!/usr/bin/env node' | cat - dist/cli.js > temp && mv temp dist/cli.js && chmod +x dist/cli.js && echo '#!/usr/bin/env node' | cat - dist/mcp-server.js > temp && mv temp dist/mcp-server.js && chmod +x dist/mcp-server.js",
     "lint": "biome check src/",
+    "mcp": "node dist/mcp-server.js",
     "prepare": "npm run build",
     "size": "size-limit",
     "start": "tsc --watch",

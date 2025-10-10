@@ -686,3 +686,139 @@ export class TranslationError extends Error {
     this.name = "TranslationError"
   }
 }
+
+/**
+ * Add a translation key with an English value to the locale files.
+ * This function always adds to the "en" locale, and if the defaultLocale is different,
+ * it will also translate and save to the defaultLocale right away.
+ */
+export const addTranslationKey = async ({
+  key,
+  value,
+  config,
+}: {
+  key: string
+  value: string
+  config: Configuration
+}) => {
+  const { loadPath, savePath, defaultNamespace, namespaces, globPatterns, defaultLocale, openai, context, model } = config
+
+  // Try to find which namespaces this key is used in by scanning the codebase
+  const affectedNamespaces: string[] = []
+  
+  try {
+    // Scan the codebase to find where this key is already being used
+    const keysWithNamespaces = await getKeysWithNamespaces({
+      globPatterns,
+      defaultNamespace,
+    })
+
+    // Find entries for this specific key
+    const keyEntries = keysWithNamespaces.filter(
+      (entry) => entry.key === key || entry.key === `${defaultNamespace}:${key}`
+    )
+
+    // Collect unique namespaces where this key is used
+    const foundNamespaces = new Set<string>()
+    for (const entry of keyEntries) {
+      for (const ns of entry.namespaces) {
+        foundNamespaces.add(ns)
+      }
+    }
+
+    if (foundNamespaces.size > 0) {
+      affectedNamespaces.push(...Array.from(foundNamespaces))
+      console.log(
+        `🔍 Found key "${key}" in use across ${affectedNamespaces.length} namespace(s): ${affectedNamespaces.join(", ")}`
+      )
+    }
+  } catch (error) {
+    // If scanning fails, continue with fallback logic
+    console.error(`Warning: Failed to scan codebase for key usage: ${error}`)
+  }
+
+  if (affectedNamespaces.length === 0) {
+    // If the key is not found in the codebase, use the default namespace
+    affectedNamespaces.push(defaultNamespace)
+    console.log(
+      `📝 Key "${key}" not found in codebase. Adding to default namespace "${defaultNamespace}".`
+    )
+  }
+
+  // Always use "en" as the locale for adding keys (English)
+  const locale = "en"
+
+  // Use console.error for logging when called from MCP server (console.log is suppressed)
+  const log = console.log
+
+  for (const targetNamespace of affectedNamespaces) {
+    log(`➕ Adding translation key "${key}" to namespace "${targetNamespace}" (${locale})`)
+
+    // Load existing keys for the English locale
+    let existingKeys: Record<string, string>
+    try {
+      existingKeys = await loadLocalesFile(loadPath, locale, targetNamespace)
+    } catch (error) {
+      // If file doesn't exist, start with empty object
+      log(`📄 Creating new namespace file for ${locale}/${targetNamespace}`)
+      existingKeys = {}
+    }
+
+    // Check if key already exists
+    if (existingKeys[key]) {
+      log(`⚠️  Key "${key}" already exists in ${locale}/${targetNamespace} with value: "${existingKeys[key]}"`)
+      log(`   Updating to new value: "${value}"`)
+    }
+
+    // Add or update the key
+    existingKeys[key] = value
+
+    // Save the updated keys using the writeLocalesFile function
+    await writeLocalesFile(savePath, locale, targetNamespace, existingKeys)
+    log(`✅ Successfully saved key to ${locale}/${targetNamespace}`)
+
+    // If defaultLocale is different from "en", translate and save to defaultLocale
+    if (defaultLocale !== "en" && openai) {
+      log(`🌐 Translating key "${key}" to ${defaultLocale}...`)
+      
+      try {
+        // Translate the single key
+        const translatedValue = await translateKey({
+          inputLanguage: "en",
+          outputLanguage: defaultLocale,
+          context: context || "",
+          object: { [key]: value },
+          openai,
+          model,
+        })
+
+        // Load existing keys for the default locale
+        let defaultLocaleKeys: Record<string, string>
+        try {
+          defaultLocaleKeys = await loadLocalesFile(loadPath, defaultLocale, targetNamespace)
+        } catch (error) {
+          // If file doesn't exist, start with empty object
+          log(`📄 Creating new namespace file for ${defaultLocale}/${targetNamespace}`)
+          defaultLocaleKeys = {}
+        }
+
+        // Add the translated key
+        defaultLocaleKeys[key] = translatedValue[key]
+
+        // Save the updated keys
+        await writeLocalesFile(savePath, defaultLocale, targetNamespace, defaultLocaleKeys)
+        log(`✅ Successfully translated and saved key to ${defaultLocale}/${targetNamespace}`)
+      } catch (error) {
+        log(`⚠️  Failed to translate key to ${defaultLocale}: ${error instanceof Error ? error.message : "Unknown error"}`)
+        log(`   You can run 'i18n-magic sync' to translate this key later`)
+      }
+    }
+  }
+
+  return {
+    key,
+    value,
+    namespace: affectedNamespaces.join(", "), // Return all affected namespaces
+    locale: defaultLocale !== "en" ? `en, ${defaultLocale}` : locale,
+  }
+}
