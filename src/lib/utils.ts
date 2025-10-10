@@ -40,21 +40,21 @@ export function removeDuplicatesFromArray<T>(arr: T[]): T[] {
  */
 const extractKeysWithRegex = (content: string): string[] => {
   const keys: string[] = []
-  
+
   // Regex patterns for t() and t.rich() calls
   // This matches: t("key"), t('key'), t.rich("key"), t.rich('key'), t(`key`)
   const patterns = [
-    /\bt\s*\(\s*["'`]([^"'`]+)["'`]/g,        // t("key") or t('key') or t(`key`)
-    /\bt\.rich\s*\(\s*["'`]([^"'`]+)["'`]/g,  // t.rich("key") or t.rich('key') or t.rich(`key`)
+    /\bt\s*\(\s*["'`]([^"'`]+)["'`]/g, // t("key") or t('key') or t(`key`)
+    /\bt\.rich\s*\(\s*["'`]([^"'`]+)["'`]/g, // t.rich("key") or t.rich('key') or t.rich(`key`)
   ]
-  
+
   for (const pattern of patterns) {
     let match
     while ((match = pattern.exec(content)) !== null) {
       keys.push(match[1])
     }
   }
-  
+
   return keys
 }
 
@@ -340,7 +340,7 @@ export const getKeysWithNamespaces = async ({
     // Temporarily suppress console.error to avoid i18next-scanner JSX errors
     const originalConsoleError = console.error
     console.error = () => {}
-    
+
     try {
       parser.parseFuncFromString(
         content,
