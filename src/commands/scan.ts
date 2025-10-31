@@ -3,7 +3,6 @@ import {
   checkAllKeysExist,
   getMissingKeys,
   getTextInput,
-  findExistingTranslation,
   findExistingTranslations,
   loadLocalesFile,
   translateKey,
@@ -93,40 +92,51 @@ export const translateMissing = async (config: Configuration) => {
 
   const allLocales = disableTranslationDuringScan ? [defaultLocale] : locales
 
-  for (const locale of allLocales) {
-    let translatedValues = {}
-
-    if (locale === defaultLocale) {
-      translatedValues = newKeysObject
-    } else {
-      translatedValues = await translateKey({
-        inputLanguage: defaultLocale,
-        outputLanguage: locale,
-        context,
-        object: newKeysObject,
-        openai,
-        model: config.model,
-      })
-    }
-
-    for (const namespace of namespaces) {
-      const existingKeys = await loadLocalesFile(loadPath, locale, namespace)
-
-      const relevantKeys = newKeysWithDefaultLocale.filter((key) =>
-        key.namespaces?.includes(namespace),
-      )
-
-      if (relevantKeys.length === 0) {
-        continue
-      }
-
-      for (const key of relevantKeys) {
-        existingKeys[key.key] = translatedValues[key.key]
-      }
-
-      writeLocalesFile(savePath, locale, namespace, existingKeys)
-    }
+  // Batch translate for all non-default locales in parallel
+  const translationCache: Record<string, Record<string, string>> = {
+    [defaultLocale]: newKeysObject,
   }
+
+  const nonDefaultLocales = allLocales.filter((l) => l !== defaultLocale)
+  if (nonDefaultLocales.length > 0) {
+    await Promise.all(
+      nonDefaultLocales.map(async (locale) => {
+        const translatedValues = await translateKey({
+          inputLanguage: defaultLocale,
+          outputLanguage: locale,
+          context,
+          object: newKeysObject,
+          openai,
+          model: config.model,
+        })
+        translationCache[locale] = translatedValues
+      })
+    )
+  }
+
+  // Process all locale/namespace combinations in parallel
+  await Promise.all(
+    allLocales.flatMap((locale) =>
+      namespaces.map(async (namespace) => {
+        const existingKeys = await loadLocalesFile(loadPath, locale, namespace)
+
+        const relevantKeys = newKeysWithDefaultLocale.filter((key) =>
+          key.namespaces?.includes(namespace),
+        )
+
+        if (relevantKeys.length === 0) {
+          return
+        }
+
+        const translatedValues = translationCache[locale]
+        for (const key of relevantKeys) {
+          existingKeys[key.key] = translatedValues[key.key]
+        }
+
+        await writeLocalesFile(savePath, locale, namespace, existingKeys)
+      })
+    )
+  )
 
   await checkAllKeysExist(config)
 

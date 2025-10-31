@@ -202,10 +202,17 @@ class I18nMagicServer {
           // Ensure config is loaded
           const config = await this.ensureConfig()
 
-          // Suppress console.log to prevent interference with MCP JSON protocol
-          // Only console.error is allowed in MCP servers
+          // Capture console.log output for diagnostics
           const originalConsoleLog = console.log
-          console.log = () => {}
+          const logMessages: string[] = []
+          console.log = (...args: any[]) => {
+            const message = args.map(arg => 
+              typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+            ).join(' ')
+            logMessages.push(message)
+            // Also log to stderr for debugging
+            console.error(`[i18n-magic] ${message}`)
+          }
 
           let result
           try {
@@ -235,6 +242,7 @@ class I18nMagicServer {
                     nextStep: result.locale.includes(',')
                       ? "Run 'i18n-magic sync' to translate this key to other locales"
                       : "Key was translated to default locale. Run 'i18n-magic sync' to translate to other locales",
+                    diagnostics: logMessages.join('\n'),
                   },
                   null,
                   2,

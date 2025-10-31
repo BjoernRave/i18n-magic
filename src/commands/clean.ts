@@ -44,43 +44,46 @@ export const removeUnusedKeys = async (config: Configuration) => {
     }
   }
 
-  // Process each namespace and locale
-  for (const namespace of namespaces) {
-    const usedKeysSet = keysByNamespace[namespace] || new Set()
+  // Process each namespace and locale in parallel
+  const results = await Promise.all(
+    namespaces.flatMap((namespace) => {
+      const usedKeysSet = keysByNamespace[namespace] || new Set()
 
-    // Process each locale
-    for (const locale of locales) {
-      // Load existing keys for this locale and namespace
-      const existingKeys = await loadLocalesFile(loadPath, locale, namespace)
-      const existingKeysCount = Object.keys(existingKeys).length
-      stats.total += existingKeysCount
+      return locales.map(async (locale) => {
+        const existingKeys = await loadLocalesFile(loadPath, locale, namespace)
+        const existingKeysCount = Object.keys(existingKeys).length
 
-      // Create a new object with only the keys that are used
-      const cleanedKeys: Record<string, string> = {}
-      let removedCount = 0
+        const cleanedKeys: Record<string, string> = {}
+        let removedCount = 0
 
-      for (const [key, value] of Object.entries(existingKeys)) {
-        if (usedKeysSet.has(key)) {
-          cleanedKeys[key] = value
-        } else {
-          removedCount++
+        for (const [key, value] of Object.entries(existingKeys)) {
+          if (usedKeysSet.has(key)) {
+            cleanedKeys[key] = value
+          } else {
+            removedCount++
+          }
         }
-      }
 
-      stats.removed += removedCount
+        if (removedCount > 0) {
+          await writeLocalesFile(savePath, locale, namespace, cleanedKeys)
+          console.log(
+            `✓ Removed ${removedCount} unused keys from ${locale}:${namespace} (${
+              Object.keys(cleanedKeys).length
+            } keys remaining)`,
+          )
+        } else {
+          console.log(`No unused keys found in ${locale}:${namespace}`)
+        }
 
-      // Only write the file if keys were removed
-      if (removedCount > 0) {
-        await writeLocalesFile(savePath, locale, namespace, cleanedKeys)
-        console.log(
-          `✓ Removed ${removedCount} unused keys from ${locale}:${namespace} (${
-            Object.keys(cleanedKeys).length
-          } keys remaining)`,
-        )
-      } else {
-        console.log(`No unused keys found in ${locale}:${namespace}`)
-      }
-    }
+        return { total: existingKeysCount, removed: removedCount }
+      })
+    })
+  )
+
+  // Aggregate stats from all parallel operations
+  for (const result of results) {
+    stats.total += result.total
+    stats.removed += result.removed
   }
 
   if (stats.removed > 0) {

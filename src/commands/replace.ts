@@ -55,8 +55,14 @@ export const replaceTranslation = async (
     { namespace: string; value: string }[]
   > = {}
 
-  for (const namespace of namespaces) {
-    const keys = await loadLocalesFile(loadPath, defaultLocale, namespace)
+  const namespaceKeysResults = await Promise.all(
+    namespaces.map(async (namespace) => ({
+      namespace,
+      keys: await loadLocalesFile(loadPath, defaultLocale, namespace),
+    }))
+  )
+
+  for (const { namespace, keys } of namespaceKeysResults) {
     for (const [keyName, value] of Object.entries(keys)) {
       if (!allAvailableKeys[keyName]) {
         allAvailableKeys[keyName] = []
@@ -105,24 +111,32 @@ export const replaceTranslation = async (
   }
 
   // Show current translations across namespaces
-  for (const namespace of targetNamespaces) {
-    const keys = await loadLocalesFile(loadPath, defaultLocale, namespace)
-    if (keys[keyToReplace]) {
+  const currentTranslations = await Promise.all(
+    targetNamespaces.map(async (namespace) => {
+      const keys = await loadLocalesFile(loadPath, defaultLocale, namespace)
+      return { namespace, value: keys[keyToReplace] }
+    })
+  )
+
+  for (const { namespace, value } of currentTranslations) {
+    if (value) {
       console.log(
-        `Current translation in ${defaultLocale} (${namespace}): "${keys[keyToReplace]}"`,
+        `Current translation in ${defaultLocale} (${namespace}): "${value}"`,
       )
     }
   }
 
   const newTranslation = await getTextInput("Enter the new translation: ")
 
-  // Update the key in all relevant namespaces and locales
-  for (const namespace of targetNamespaces) {
-    for (const locale of locales) {
-      let newValue = ""
-      if (locale === defaultLocale) {
-        newValue = newTranslation
-      } else {
+  // Batch translate for all non-default locales first
+  const translationCache: Record<string, string> = {
+    [defaultLocale]: newTranslation,
+  }
+
+  const nonDefaultLocales = locales.filter((l) => l !== defaultLocale)
+  if (nonDefaultLocales.length > 0) {
+    await Promise.all(
+      nonDefaultLocales.map(async (locale) => {
         const translation = await translateKey({
           context,
           inputLanguage: defaultLocale,
@@ -133,17 +147,24 @@ export const replaceTranslation = async (
           openai,
           model: config.model,
         })
-
-        newValue = translation[keyToReplace]
-      }
-
-      const existingKeys = await loadLocalesFile(loadPath, locale, namespace)
-      existingKeys[keyToReplace] = newValue
-      await writeLocalesFile(savePath, locale, namespace, existingKeys)
-
-      console.log(
-        `Updated "${keyToReplace}" in ${locale} (${namespace}): "${newValue}"`,
-      )
-    }
+        translationCache[locale] = translation[keyToReplace]
+      })
+    )
   }
+
+  // Update the key in all relevant namespaces and locales in parallel
+  await Promise.all(
+    targetNamespaces.flatMap((namespace) =>
+      locales.map(async (locale) => {
+        const newValue = translationCache[locale]
+        const existingKeys = await loadLocalesFile(loadPath, locale, namespace)
+        existingKeys[keyToReplace] = newValue
+        await writeLocalesFile(savePath, locale, namespace, existingKeys)
+
+        console.log(
+          `Updated "${keyToReplace}" in ${locale} (${namespace}): "${newValue}"`,
+        )
+      })
+    )
+  )
 }
