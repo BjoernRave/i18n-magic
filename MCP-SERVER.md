@@ -72,6 +72,9 @@ The i18n-magic MCP server allows LLMs to add missing translation keys directly t
 ## Features
 
 - **Add Translation Keys**: Add new translation keys with English values
+- **Update Translation Keys**: Update existing translation keys with new values (auto-translates to all languages)
+- **Search Translations**: Fuzzy search across both keys and values to find existing translations
+- **Get Translation Value**: Retrieve the English value for any translation key
 - **List Missing Keys**: Scan your codebase to identify all untranslated keys
 - **Namespace Support**: Automatically uses the default namespace or specify a custom one
 - **Configuration Integration**: Reads from your existing `i18n-magic.js` configuration file
@@ -245,6 +248,186 @@ Adds a new translation key with an English value to the locale files.
 - This ensures consistency since the MCP tool always provides English values
 - After adding keys, run `i18n-magic sync` to translate them to other locales
 
+### get_translation_key
+
+Retrieves the English value for a specific translation key.
+
+**Parameters:**
+- `key` (required): The translation key to retrieve (e.g., "welcomeMessage")
+- `namespace` (optional): Namespace to search in. If not provided, searches default namespace first, then all namespaces
+
+**Example Usage:**
+
+```typescript
+// Get a key from any namespace
+{
+  "key": "welcomeMessage"
+}
+
+// Or specify the namespace
+{
+  "key": "welcomeMessage",
+  "namespace": "common"
+}
+```
+
+**Response Format:**
+
+```json
+{
+  "success": true,
+  "key": "welcomeMessage",
+  "value": "Welcome to our application!",
+  "namespace": "common",
+  "locale": "en"
+}
+```
+
+**Important Notes:**
+- Always returns the English translation
+- Use this to check if a key exists before adding or updating it
+- Great for verifying current translations
+
+### update_translation_key
+
+Updates an existing translation key with a new English value and automatically translates it to all configured locales.
+
+**Parameters:**
+- `key` (required): The translation key to update (e.g., "welcomeMessage")
+- `value` (required): The new English text value
+- `namespace` (optional): Namespace to update. If not provided, updates the key in all namespaces where it exists
+
+**Example Usage:**
+
+```typescript
+// Update a key across all namespaces where it exists
+{
+  "key": "welcomeMessage",
+  "value": "Welcome to our awesome application!"
+}
+
+// Or update in a specific namespace only
+{
+  "key": "welcomeMessage",
+  "value": "Welcome to our awesome application!",
+  "namespace": "common"
+}
+```
+
+**Response Format:**
+
+```json
+{
+  "success": true,
+  "message": "Successfully updated translation key 'welcomeMessage' in 2 namespace(s) and 4 locale(s)",
+  "key": "welcomeMessage",
+  "newValue": "Welcome to our awesome application!",
+  "namespaces": ["common", "mobile"],
+  "locales": ["en", "de", "es", "fr"]
+}
+```
+
+**Important Notes:**
+- **Automatically translates** the new value to all configured locales using AI
+- Updates the key in all namespaces where it exists (unless you specify a namespace)
+- Use this to fix typos, improve wording, or change existing translations
+- If you're not sure if a key exists, use `get_translation_key` or `search_translations` first
+- No need to run `sync` afterwards - translation happens immediately
+
+**When to use:**
+- Fix typos in existing translations
+- Improve wording or clarity
+- Update outdated text
+- Change tone or style of existing translations
+
+### search_translations
+
+Search for translations by keyword or phrase using fuzzy matching. Searches both translation keys AND their English values across ALL namespaces.
+
+**Parameters:**
+- `query` (required): Search term to find in keys or values (e.g., "password", "welcome", "click")
+
+**Example Usage:**
+
+```typescript
+// Search across all namespaces
+{
+  "query": "password"
+}
+
+// Search for button text
+{
+  "query": "click"
+}
+```
+
+**Response Format:**
+
+```json
+{
+  "success": true,
+  "message": "Found 3 translations matching 'password' (showing first 50)",
+  "query": "password",
+  "totalResults": 3,
+  "results": [
+    {
+      "key": "passwordTooShort",
+      "value": "Password is too short",
+      "namespace": "common",
+      "matchType": "both"
+    },
+    {
+      "key": "passwordComplexity",
+      "value": "Password must contain uppercase, lowercase, and numbers",
+      "namespace": "auth",
+      "matchType": "both"
+    },
+    {
+      "key": "resetPassword",
+      "value": "Reset your password",
+      "namespace": "auth",
+      "matchType": "key"
+    }
+  ],
+  "hasMore": false,
+  "tip": "Each result shows the translation key, English value, namespace, and what matched (key, value, or both). Use these keys directly in your code or use get_translation_key for more details."
+}
+```
+
+**Match Types:**
+- `"both"`: Query found in both the key name and the value
+- `"key"`: Query found only in the key name
+- `"value"`: Query found only in the English text value
+
+**Important Notes:**
+- **Fuzzy search**: Doesn't need exact matches, finds partial matches
+- Searches both key names and English values
+- Results are sorted: exact matches first, then by match type, then alphabetically
+- Limited to 50 results to prevent overwhelming output
+- Case-insensitive search
+
+**When to use:**
+- **Before adding new translations**: Check if similar text already exists to avoid duplicates
+- Find the key name when you only remember part of the text
+- Discover related translations (e.g., all password-related keys)
+- Verify consistency across translations
+- Find keys to update or reuse
+
+**Example workflow:**
+```typescript
+// 1. User wants to add "Please enter your password"
+// 2. First search to check for existing similar translations
+{
+  "query": "password"
+}
+
+// 3. Results show: "passwordPlaceholder": "Enter your password"
+// 4. Decide to either:
+//    - Reuse the existing key
+//    - Update the existing key with update_translation_key
+//    - Add a new, more specific key with add_translation_key
+```
+
 ### list_untranslated_keys
 
 Lists all translation keys that are used in the codebase but are not yet defined in the locale files. This helps identify missing translations that need to be added.
@@ -302,17 +485,32 @@ Lists all translation keys that are used in the codebase but are not yet defined
 
 ## Workflow
 
-### Workflow 1: Adding Individual Keys
-1. **LLM Detects Missing Key**: While coding, the LLM identifies that a translation key is missing
-2. **Add Key via MCP**: The LLM calls `add_translation_key` to add the English version
-3. **Sync Translations**: Run `i18n-magic sync` to translate the key to all other configured locales
-4. **Use in Code**: The translation key is now available in all languages
+### Workflow 1: Adding New Keys (With Duplicate Prevention)
+1. **LLM Detects Need**: While coding, the LLM identifies that a translation is needed
+2. **Search First**: The LLM calls `search_translations` to check if similar text already exists
+3. **Decision Point**:
+   - **If similar key exists**: Reuse the existing key or update it with `update_translation_key`
+   - **If no match found**: Add new key with `add_translation_key`
+4. **Sync (if needed)**: If you used `add_translation_key`, run `i18n-magic sync` to translate to other locales
+5. **Use in Code**: The translation key is now available in all languages
 
-### Workflow 2: Batch Checking Missing Keys
+### Workflow 2: Updating Existing Keys
+1. **Find the Key**: Use `search_translations` or `get_translation_key` to find the key to update
+2. **Update via MCP**: The LLM calls `update_translation_key` with the new English value
+3. **Automatic Translation**: The tool automatically translates to all configured locales (no sync needed!)
+4. **Use in Code**: Updated translation is immediately available in all languages
+
+### Workflow 3: Batch Checking Missing Keys
 1. **Check for Missing Keys**: The LLM calls `list_untranslated_keys` to get a complete list
 2. **Review Results**: See all missing keys grouped by namespace
 3. **Add Keys**: Use `add_translation_key` for each missing key or run `i18n-magic scan`
 4. **Sync Translations**: Run `i18n-magic sync` to translate all new keys
+
+### Workflow 4: Exploring Existing Translations
+1. **Search**: Use `search_translations` with a keyword to see what translations exist
+2. **Review**: Browse through results to find relevant keys
+3. **Get Details**: Use `get_translation_key` for more details on specific keys
+4. **Use or Update**: Either use the existing key or update it if needed
 
 ## Testing the Server
 
@@ -460,7 +658,74 @@ Here's what happens when the LLM uses the MCP server to add a key:
 5. Key is now available in all configured locales
 ```
 
-### Example 2: Checking for Missing Keys
+### Example 2: Searching Before Adding (Best Practice)
+
+Here's what happens when the LLM searches first to avoid duplicates:
+
+```
+1. User asks: "Add translation for 'Please enter your password'"
+2. LLM calls search_translations first:
+   {
+     "query": "enter password"
+   }
+3. Server responds:
+   {
+     "success": true,
+     "message": "Found 2 translations matching 'enter password'",
+     "results": [
+       {
+         "key": "passwordPlaceholder",
+         "value": "Enter your password",
+         "namespace": "auth",
+         "matchType": "both"
+       },
+       {
+         "key": "passwordFieldLabel",
+         "value": "Password",
+         "namespace": "auth",
+         "matchType": "value"
+       }
+     ]
+   }
+4. LLM sees "passwordPlaceholder" exists with similar text
+5. LLM suggests: "I found an existing key 'passwordPlaceholder' with value 'Enter your password'. 
+   Would you like to use this key or create a new one?"
+6. Avoids duplicate translations!
+```
+
+### Example 3: Updating a Translation
+
+Here's what happens when fixing a typo or improving wording:
+
+```
+1. User says: "Fix the welcome message, it should say 'Welcome back!' instead"
+2. LLM calls search_translations:
+   {
+     "query": "welcome"
+   }
+3. Finds key: "welcomeMessage": "Welcome to our app"
+4. LLM calls update_translation_key:
+   {
+     "key": "welcomeMessage",
+     "value": "Welcome back!"
+   }
+5. Server responds:
+   {
+     "success": true,
+     "message": "Successfully updated translation key 'welcomeMessage' in 1 namespace(s) and 4 locale(s)",
+     "key": "welcomeMessage",
+     "newValue": "Welcome back!",
+     "namespaces": ["common"],
+     "locales": ["en", "de", "es", "fr"]
+   }
+6. Key is immediately updated in ALL languages (no sync needed!)
+7. English: "Welcome back!"
+   German: "Willkommen zurück!"
+   Spanish: "¡Bienvenido de nuevo!"
+   French: "Bienvenue de retour!"
+```
+
+### Example 4: Checking for Missing Keys
 
 Here's what happens when checking for all missing translations:
 
@@ -502,8 +767,17 @@ Here's what happens when checking for all missing translations:
 
 ## Notes
 
-- The MCP server only adds keys; it does not translate them
-- Translation happens when you run the `sync` command
-- Keys are always added to the English (`en`) locale first
+- `add_translation_key` only adds keys to English; run `sync` to translate to other languages
+- `update_translation_key` automatically translates to all configured languages (no sync needed!)
+- `search_translations` performs fuzzy search on both keys and values to help find existing translations
+- `get_translation_key` retrieves the English value for any key
+- All keys are always stored in the English (`en`) locale as the source
 - The server uses your existing i18n-magic configuration for namespaces, load paths, and save paths
+
+## Best Practices
+
+1. **Always search before adding**: Use `search_translations` to check if similar text already exists
+2. **Use update for changes**: When modifying existing text, use `update_translation_key` instead of manually editing files
+3. **Let AI handle translation**: Both `add_translation_key` + `sync` and `update_translation_key` use AI to maintain consistency across languages
+4. **Namespace awareness**: Let the tool auto-detect namespaces, or specify when you need precise control
 
