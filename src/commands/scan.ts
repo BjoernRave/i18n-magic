@@ -1,14 +1,14 @@
 import type { Configuration } from "../lib/types.js"
 import {
   checkAllKeysExist,
+  findExistingTranslations,
   getMissingKeys,
   getTextInput,
-  findExistingTranslations,
   loadLocalesFile,
   translateKey,
   writeLocalesFile,
 } from "../lib/utils.js"
-import { removeUnusedKeys } from "./clean.js"
+import { findUnusedKeys, removeUnusedKeys } from "./clean.js"
 
 export const translateMissing = async (config: Configuration) => {
   const {
@@ -23,13 +23,16 @@ export const translateMissing = async (config: Configuration) => {
     autoClear,
   } = config
 
-  // Run clean command first if autoClear is enabled
   if (autoClear) {
-    console.log("🧹 Auto-clearing unused translations before scanning...")
-    await removeUnusedKeys(config)
-    console.log(
-      "✅ Auto-clear completed. Now scanning for missing translations...\n",
-    )
+    console.log("🧹 Checking for unused translations before scanning...")
+    const report = await findUnusedKeys(config)
+
+    if (report.unusedCount > 0) {
+      await removeUnusedKeys(config)
+      console.log("")
+    } else {
+      console.log("✅ No unused keys found.\n")
+    }
   }
 
   const newKeys = await getMissingKeys(config)
@@ -62,7 +65,8 @@ export const translateMissing = async (config: Configuration) => {
     const existingValue = existingTranslationResults[newKey.key]
 
     let answer: string
-    if (existingValue) {
+    // Use explicit null check instead of truthy check to handle empty string values
+    if (existingValue !== null) {
       reusedKeys.push(newKey.key)
       answer = existingValue
     } else {
@@ -110,11 +114,16 @@ export const translateMissing = async (config: Configuration) => {
           model: config.model,
         })
         translationCache[locale] = translatedValues
-      })
+      }),
     )
   }
 
   // Process all locale/namespace combinations in parallel
+  const writeResults: Array<{
+    locale: string
+    namespace: string
+    keyCount: number
+  }> = []
   await Promise.all(
     allLocales.flatMap((locale) =>
       namespaces.map(async (namespace) => {
@@ -134,9 +143,15 @@ export const translateMissing = async (config: Configuration) => {
         }
 
         await writeLocalesFile(savePath, locale, namespace, existingKeys)
-      })
-    )
+        writeResults.push({ locale, namespace, keyCount: relevantKeys.length })
+      }),
+    ),
   )
+
+  // Log where keys were written
+  for (const { locale, namespace, keyCount } of writeResults) {
+    console.log(`   📝 Wrote ${keyCount} key(s) to ${locale}/${namespace}.json`)
+  }
 
   await checkAllKeysExist(config)
 

@@ -774,10 +774,7 @@ Here's what happens when checking for all missing translations:
 - All keys are always stored in the English (`en`) locale as the source
 - The server uses your existing i18n-magic configuration for namespaces, load paths, and save paths
 
-## Best Practices
-
-1. **Always search before adding**: Use `search_translations` to check if similar text already exists
+## Best Practices1. **Always search before adding**: Use `search_translations` to check if similar text already exists
 2. **Use update for changes**: When modifying existing text, use `update_translation_key` instead of manually editing files
 3. **Let AI handle translation**: Both `add_translation_key` + `sync` and `update_translation_key` use AI to maintain consistency across languages
 4. **Namespace awareness**: Let the tool auto-detect namespaces, or specify when you need precise control
-

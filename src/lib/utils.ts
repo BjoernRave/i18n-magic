@@ -3,6 +3,7 @@ import { Parser } from "i18next-scanner"
 import { minimatch } from "minimatch"
 import fs from "node:fs"
 import path from "node:path"
+import { performance } from "node:perf_hooks"
 import type OpenAI from "openai"
 import prompts from "prompts"
 import { languages } from "./languges.js"
@@ -65,6 +66,7 @@ export const translateKey = async ({
   openai,
   outputLanguage,
   model,
+  onProgress,
 }: {
   object: Record<string, string>
   context: string
@@ -72,6 +74,7 @@ export const translateKey = async ({
   outputLanguage: string
   model: string
   openai: OpenAI
+  onProgress?: (completed: number, total: number) => void
 }) => {
   // Split object into chunks of 100 keys
   const entries = Object.entries(object)
@@ -90,6 +93,9 @@ export const translateKey = async ({
   const output = existingOutput?.label || outputLanguage
 
   // Translate each chunk
+  let completedKeys = 0
+  const totalKeys = entries.length
+
   for (const chunk of chunks) {
     const chunkObject = Object.fromEntries(chunk)
     const completion = await openai.chat.completions.create({
@@ -123,6 +129,12 @@ export const translateKey = async ({
 
     // Merge translated chunk with result
     result = { ...result, ...translatedChunk }
+    
+    // Report progress
+    completedKeys += chunk.length
+    if (onProgress) {
+      onProgress(completedKeys, totalKeys)
+    }
 
     // Optional: Add a small delay between chunks to avoid rate limiting
     await new Promise((resolve) => setTimeout(resolve, 100))
@@ -137,7 +149,10 @@ export const loadLocalesFile = async (
     | ((locale: string, namespace: string) => Promise<Record<string, string>>),
   locale: string,
   namespace: string,
+  options?: { silent?: boolean },
 ) => {
+  const silent = options?.silent ?? false
+
   if (typeof loadPath === "string") {
     const resolvedPath = loadPath
       .replace("{{lng}}", locale)
@@ -145,7 +160,9 @@ export const loadLocalesFile = async (
 
     // Check if file exists, return empty object if it doesn't
     if (!fs.existsSync(resolvedPath)) {
-      console.log(`📄 Creating new namespace file: ${resolvedPath}`)
+      if (!silent) {
+        console.log(`📄 Creating new namespace file: ${resolvedPath}`)
+      }
       return {}
     }
 
@@ -473,8 +490,10 @@ export const getMissingKeys = async ({
       `🔍 Checking ${keysForNamespace.size} keys for namespace ${namespace}`,
     )
 
+    const missingInNamespace: string[] = []
     for (const key of keysForNamespace) {
       if (!existingKeys[key]) {
+        missingInNamespace.push(key)
         if (uniqueMissingKeys.has(key)) {
           // Add this namespace to the existing entry
           const existing = uniqueMissingKeys.get(key)
@@ -495,6 +514,11 @@ export const getMissingKeys = async ({
         }
       }
     }
+
+    // Log missing keys for this namespace if any
+    if (missingInNamespace.length > 0) {
+      console.log(`   ❌ Missing in ${namespace}: ${missingInNamespace.slice(0, 10).join(", ")}${missingInNamespace.length > 10 ? `... and ${missingInNamespace.length - 10} more` : ""}`)
+    }
   }
 
   // Convert to the expected format
@@ -508,6 +532,17 @@ export const getMissingKeys = async ({
       namespace: primaryNamespace,
       namespaces: keyNamespaces,
     })
+  }
+
+  // Final summary of all missing keys
+  if (newKeys.length > 0) {
+    console.log(`\n📋 Summary: ${newKeys.length} unique missing key(s):`)
+    for (const { key, namespaces: ns } of newKeys.slice(0, 20)) {
+      console.log(`   - "${key}" in [${ns.join(", ")}]`)
+    }
+    if (newKeys.length > 20) {
+      console.log(`   ... and ${newKeys.length - 20} more`)
+    }
   }
 
   return newKeys
@@ -527,7 +562,9 @@ export const findExistingTranslation = async (
   for (const namespace of namespaces) {
     try {
       const existingKeys = await loadLocalesFile(loadPath, locale, namespace)
-      if (existingKeys[key]) {
+      // Use explicit existence check instead of truthy check
+      // to handle empty string values correctly
+      if (Object.prototype.hasOwnProperty.call(existingKeys, key)) {
         return existingKeys[key]
       }
     } catch (error) {
@@ -547,12 +584,16 @@ export const findExistingTranslations = async (
   loadPath:
     | string
     | ((locale: string, namespace: string) => Promise<Record<string, string>>),
+  options?: { silent?: boolean },
 ): Promise<Record<string, string | null>> => {
+  const silent = options?.silent ?? false
+  const log = silent ? () => {} : console.log
+
   // Load all namespace files in parallel first
   const namespaceKeys: Record<string, Record<string, string>> = {}
   const loadPromises = namespaces.map(async (namespace) => {
     try {
-      const existingKeys = await loadLocalesFile(loadPath, locale, namespace)
+      const existingKeys = await loadLocalesFile(loadPath, locale, namespace, { silent })
       namespaceKeys[namespace] = existingKeys
     } catch (error) {
       namespaceKeys[namespace] = {}
@@ -561,14 +602,39 @@ export const findExistingTranslations = async (
 
   await Promise.all(loadPromises)
 
+  // Log how many keys were found in each namespace for the default locale
+  log(`\n🔎 Searching for existing translations in ${locale}:`)
+  for (const namespace of namespaces) {
+    const nsKeys = Object.keys(namespaceKeys[namespace] || {})
+    log(`   📁 ${namespace}.json: ${nsKeys.length} keys available`)
+    // Show sample keys from the namespace (first 3)
+    if (nsKeys.length > 0) {
+      const sampleKeys = nsKeys.slice(0, 3)
+      log(`      Sample keys: ${sampleKeys.join(", ")}${nsKeys.length > 3 ? "..." : ""}`)
+    }
+  }
+  
+  // Show sample of keys we're searching for
+  if (keys.length > 0) {
+    const sampleSearchKeys = keys.slice(0, 3)
+    log(`\n   🔍 Looking for keys like: ${sampleSearchKeys.join(", ")}${keys.length > 3 ? "..." : ""}`)
+  }
+
   // Now find translations for all keys
   const results: Record<string, string | null> = {}
+  const foundInNamespace: Record<string, number> = {}
 
   for (const key of keys) {
     let found = false
     for (const namespace of namespaces) {
-      if (namespaceKeys[namespace]?.[key]) {
+      // Use explicit existence check instead of truthy check
+      // to handle empty string values correctly
+      if (
+        namespaceKeys[namespace] &&
+        Object.prototype.hasOwnProperty.call(namespaceKeys[namespace], key)
+      ) {
         results[key] = namespaceKeys[namespace][key]
+        foundInNamespace[namespace] = (foundInNamespace[namespace] || 0) + 1
         found = true
         break
       }
@@ -577,6 +643,21 @@ export const findExistingTranslations = async (
       results[key] = null
     }
   }
+
+  // Log how many keys were found in each namespace
+  const totalFound = Object.values(foundInNamespace).reduce(
+    (sum, count) => sum + count,
+    0,
+  )
+  const notFound = keys.length - totalFound
+  log(`\n📊 Search results for ${keys.length} missing keys:`)
+  for (const [namespace, count] of Object.entries(foundInNamespace)) {
+    log(`   ✅ Found ${count} keys in ${namespace}.json`)
+  }
+  if (notFound > 0) {
+    log(`   ❌ ${notFound} keys not found in any namespace`)
+  }
+  log("")
 
   return results
 }
@@ -688,31 +769,53 @@ export class TranslationError extends Error {
 }
 
 /**
- * Add a translation key with an English value to the locale files.
- * This function always adds to the "en" locale, and if the defaultLocale is different,
- * it will also translate and save to the defaultLocale right away.
+ * Add a translation key with a value in a specific language to the locale files.
+ * This function adds to the specified language locale, and will also translate
+ * and save to other locales if OpenAI is configured.
  */
-export const addTranslationKey = async ({
-  key,
-  value,
+/**
+ * Add multiple translation keys in batch. This is optimized for performance:
+ * - Single codebase scan for all keys
+ * - Batched file I/O operations
+ * - Batched translations per locale
+ */
+export const addTranslationKeys = async ({
+  keys,
   config,
 }: {
-  key: string
-  value: string
+  keys: Array<{ key: string; value: string; language?: string }>
   config: Configuration
 }) => {
+  const startTime = performance.now()
   const { loadPath, savePath, defaultNamespace, namespaces, globPatterns, defaultLocale, openai, context, model } = config
 
-  // Try to find which namespaces this key is used in by scanning the codebase
-  const affectedNamespaces: string[] = []
-  
+  if (keys.length === 0) {
+    return { results: [], performance: { totalTime: 0, scanTime: 0, translationTime: 0, fileIOTime: 0 } }
+  }
+
+  const log = console.log
+  log(`🚀 Batch adding ${keys.length} translation key(s)...`)
+
+  // Step 1: Single codebase scan for all keys (most expensive operation)
+  const scanStartTime = performance.now()
+  let keysWithNamespaces: Array<{ key: string; namespaces: string[]; file: string }> = []
   try {
-    // Scan the codebase to find where this key is already being used
-    const keysWithNamespaces = await getKeysWithNamespaces({
+    keysWithNamespaces = await getKeysWithNamespaces({
       globPatterns,
       defaultNamespace,
     })
+  } catch (error) {
+    console.error(`Warning: Failed to scan codebase for key usage: ${error}`)
+  }
+  const scanTime = performance.now() - scanStartTime
+  log(`⏱️  Codebase scan completed in ${scanTime.toFixed(2)}ms`)
 
+  // Step 2: Determine namespaces for each key
+  const keyToNamespaces = new Map<string, Set<string>>()
+  
+  for (const { key, language = "en" } of keys) {
+    const affectedNamespaces: string[] = []
+    
     // Find entries for this specific key
     const keyEntries = keysWithNamespaces.filter(
       (entry) => entry.key === key || entry.key === `${defaultNamespace}:${key}`
@@ -728,97 +831,267 @@ export const addTranslationKey = async ({
 
     if (foundNamespaces.size > 0) {
       affectedNamespaces.push(...Array.from(foundNamespaces))
-      console.log(
-        `🔍 Found key "${key}" in use across ${affectedNamespaces.length} namespace(s): ${affectedNamespaces.join(", ")}`
-      )
+    } else {
+      // If the key is not found in the codebase, use the default namespace
+      affectedNamespaces.push(defaultNamespace)
     }
-  } catch (error) {
-    // If scanning fails, continue with fallback logic
-    console.error(`Warning: Failed to scan codebase for key usage: ${error}`)
+
+    keyToNamespaces.set(key, new Set(affectedNamespaces))
   }
 
-  if (affectedNamespaces.length === 0) {
-    // If the key is not found in the codebase, use the default namespace
-    affectedNamespaces.push(defaultNamespace)
-    console.log(
-      `📝 Key "${key}" not found in codebase. Adding to default namespace "${defaultNamespace}".`
-    )
+  // Step 3: Group keys by namespace and locale
+  const namespaceLocaleToKeys = new Map<string, Array<{ key: string; value: string; language: string }>>()
+  
+  for (const { key, value, language = "en" } of keys) {
+    const namespaces = keyToNamespaces.get(key) || new Set([defaultNamespace])
+    for (const namespace of namespaces) {
+      const mapKey = `${namespace}:${language}`
+      if (!namespaceLocaleToKeys.has(mapKey)) {
+        namespaceLocaleToKeys.set(mapKey, [])
+      }
+      namespaceLocaleToKeys.get(mapKey)!.push({ key, value, language })
+    }
   }
 
-  // Always use "en" as the locale for adding keys (English)
-  const locale = "en"
-
-  // Use console.error for logging when called from MCP server (console.log is suppressed)
-  const log = console.log
-
-  for (const targetNamespace of affectedNamespaces) {
-    log(`➕ Adding translation key "${key}" to namespace "${targetNamespace}" (${locale})`)
-
-    // Load existing keys for the English locale
-    let existingKeys: Record<string, string>
-    try {
-      existingKeys = await loadLocalesFile(loadPath, locale, targetNamespace)
-    } catch (error) {
-      // If file doesn't exist, start with empty object
-      log(`📄 Creating new namespace file for ${locale}/${targetNamespace}`)
-      existingKeys = {}
+  // Step 4: Collect all unique namespaces that will be affected
+  const affectedNamespaces = new Set<string>()
+  for (const namespaces of keyToNamespaces.values()) {
+    for (const ns of namespaces) {
+      affectedNamespaces.add(ns)
     }
+  }
 
-    // Check if key already exists
-    if (existingKeys[key]) {
-      log(`⚠️  Key "${key}" already exists in ${locale}/${targetNamespace} with value: "${existingKeys[key]}"`)
-      log(`   Updating to new value: "${value}"`)
-    }
-
-    // Add or update the key
-    existingKeys[key] = value
-
-    // Save the updated keys using the writeLocalesFile function
-    await writeLocalesFile(savePath, locale, targetNamespace, existingKeys)
-    log(`✅ Successfully saved key to ${locale}/${targetNamespace}`)
-
-    // If defaultLocale is different from "en", translate and save to defaultLocale
-    if (defaultLocale !== "en" && openai) {
-      log(`🌐 Translating key "${key}" to ${defaultLocale}...`)
+  // Step 5: Batch load ALL locale files for affected namespaces (not just input language)
+  // This ensures we preserve existing keys in all locales
+  const fileIOStartTime = performance.now()
+  const localeFiles = new Map<string, Record<string, string>>()
+  const loadErrors: Array<{ fileKey: string; error: string }> = []
+  
+  // Load files for all locales × all affected namespaces - SEQUENTIALLY to avoid race conditions
+  for (const namespace of affectedNamespaces) {
+    for (const locale of config.locales) {
+      const fileKey = `${locale}:${namespace}`
       
-      try {
-        // Translate the single key
-        const translatedValue = await translateKey({
-          inputLanguage: "en",
-          outputLanguage: defaultLocale,
-          context: context || "",
-          object: { [key]: value },
-          openai,
-          model,
-        })
-
-        // Load existing keys for the default locale
-        let defaultLocaleKeys: Record<string, string>
+      if (!localeFiles.has(fileKey)) {
         try {
-          defaultLocaleKeys = await loadLocalesFile(loadPath, defaultLocale, targetNamespace)
+          const existingKeys = await loadLocalesFile(loadPath, locale, namespace, { silent: true })
+          localeFiles.set(fileKey, existingKeys)
         } catch (error) {
-          // If file doesn't exist, start with empty object
-          log(`📄 Creating new namespace file for ${defaultLocale}/${targetNamespace}`)
-          defaultLocaleKeys = {}
+          // Don't silently ignore - track the error and DO NOT set empty object
+          const errorMsg = error instanceof Error ? error.message : String(error)
+          loadErrors.push({ fileKey, error: errorMsg })
+          log(`⚠️  Failed to load ${fileKey}: ${errorMsg}`)
         }
-
-        // Add the translated key
-        defaultLocaleKeys[key] = translatedValue[key]
-
-        // Save the updated keys
-        await writeLocalesFile(savePath, defaultLocale, targetNamespace, defaultLocaleKeys)
-        log(`✅ Successfully translated and saved key to ${defaultLocale}/${targetNamespace}`)
-      } catch (error) {
-        log(`⚠️  Failed to translate key to ${defaultLocale}: ${error instanceof Error ? error.message : "Unknown error"}`)
-        log(`   You can run 'i18n-magic sync' to translate this key later`)
       }
     }
   }
+  
+  // If any files failed to load, abort to prevent data loss
+  if (loadErrors.length > 0) {
+    throw new Error(
+      `Failed to load ${loadErrors.length} locale file(s). Aborting to prevent data loss.\n` +
+      `Failed files: ${loadErrors.map(e => e.fileKey).join(", ")}\n` +
+      `First error: ${loadErrors[0].error}`
+    )
+  }
+  const fileIOTime = performance.now() - fileIOStartTime
+  log(`⏱️  File I/O (load) completed in ${fileIOTime.toFixed(2)}ms`)
+
+  // Step 6: Add new keys to the input language locale files
+  for (const [namespaceLocale, keyValues] of namespaceLocaleToKeys) {
+    const [namespace, locale] = namespaceLocale.split(":")
+    const fileKey = `${locale}:${namespace}`
+    const existingKeys = localeFiles.get(fileKey) || {}
+    
+    for (const { key, value } of keyValues) {
+      existingKeys[key] = value
+    }
+    
+    localeFiles.set(fileKey, existingKeys)
+  }
+
+  // Step 7: Batch translate if OpenAI is configured
+  const translationStartTime = performance.now()
+  const translationCache = new Map<string, Record<string, string>>()
+  
+  if (openai) {
+    // Group keys by input language
+    const keysByLanguage = new Map<string, Array<{ key: string; value: string; namespaces: Set<string> }>>()
+    
+    for (const { key, value, language = "en" } of keys) {
+      if (!keysByLanguage.has(language)) {
+        keysByLanguage.set(language, [])
+      }
+      keysByLanguage.get(language)!.push({
+        key,
+        value,
+        namespaces: keyToNamespaces.get(key) || new Set([defaultNamespace]),
+      })
+    }
+
+    // Translate each language group to all other locales
+    const translationPromises: Promise<void>[] = []
+    
+    for (const [inputLanguage, keyValues] of keysByLanguage) {
+      const otherLocales = config.locales.filter(l => l !== inputLanguage)
+      
+      for (const targetLocale of otherLocales) {
+        const keysToTranslate = Object.fromEntries(
+          keyValues.map(({ key, value }) => [key, value])
+        )
+        
+        translationPromises.push(
+          translateKey({
+            inputLanguage,
+            outputLanguage: targetLocale,
+            context: context || "",
+            object: keysToTranslate,
+            openai,
+            model,
+          })
+            .then((translated) => {
+              translationCache.set(`${inputLanguage}:${targetLocale}`, translated)
+            })
+            .catch((error) => {
+              log(`⚠️  Failed to translate ${keyValues.length} key(s) from ${inputLanguage} to ${targetLocale}: ${error instanceof Error ? error.message : "Unknown error"}`)
+            })
+        )
+      }
+    }
+    
+    await Promise.all(translationPromises)
+    
+    // Add translated keys to locale files (merge with existing keys)
+    for (const [inputLanguage, keyValues] of keysByLanguage) {
+      const otherLocales = config.locales.filter(l => l !== inputLanguage)
+      
+      for (const targetLocale of otherLocales) {
+        const translated = translationCache.get(`${inputLanguage}:${targetLocale}`)
+        if (!translated) continue
+        
+        for (const { key, namespaces } of keyValues) {
+          if (translated[key]) {
+            for (const namespace of namespaces) {
+              const fileKey = `${targetLocale}:${namespace}`
+              // File MUST already be loaded from step 5 - if not, something went wrong
+              if (!localeFiles.has(fileKey)) {
+                throw new Error(
+                  `Internal error: Locale file ${fileKey} was not loaded in step 5. ` +
+                  `This should never happen. Aborting to prevent data loss.`
+                )
+              }
+              // Merge translated key with existing keys (don't overwrite the whole file)
+              localeFiles.get(fileKey)![key] = translated[key]
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  const translationTime = performance.now() - translationStartTime
+  if (openai && translationTime > 0) {
+    log(`⏱️  Translation completed in ${translationTime.toFixed(2)}ms`)
+  }
+
+  // Step 8: Validate and write all files
+  // Safety check: ensure we're not accidentally removing keys (only adding)
+  const writeStartTime = performance.now()
+  const originalKeyCounts = new Map<string, number>()
+  
+  // Store original key counts for validation
+  for (const namespace of affectedNamespaces) {
+    for (const locale of config.locales) {
+      const fileKey = `${locale}:${namespace}`
+      try {
+        const original = await loadLocalesFile(loadPath, locale, namespace, { silent: true })
+        originalKeyCounts.set(fileKey, Object.keys(original).length)
+      } catch {
+        originalKeyCounts.set(fileKey, 0)
+      }
+    }
+  }
+  
+  // Validate: new file should have at least as many keys as original
+  for (const [fileKey, newKeys] of localeFiles) {
+    const originalCount = originalKeyCounts.get(fileKey) || 0
+    const newCount = Object.keys(newKeys).length
+    
+    if (newCount < originalCount) {
+      throw new Error(
+        `Safety check failed: Writing ${fileKey} would reduce keys from ${originalCount} to ${newCount}. ` +
+        `This operation only adds keys, never removes. Aborting to prevent data loss.`
+      )
+    }
+  }
+  
+  // All validations passed, now write files sequentially to avoid race conditions
+  for (const [fileKey, keys] of localeFiles) {
+    const [locale, namespace] = fileKey.split(":")
+    await writeLocalesFile(savePath, locale, namespace, keys)
+  }
+  
+  const writeTime = performance.now() - writeStartTime
+  log(`⏱️  File I/O (write) completed in ${writeTime.toFixed(2)}ms`)
+
+  const totalTime = performance.now() - startTime
+  log(`✅ Batch operation completed in ${totalTime.toFixed(2)}ms (${(totalTime / keys.length).toFixed(2)}ms per key)`)
+
+  // Build results
+  const results = keys.map(({ key, value, language = "en" }) => {
+    const namespaces = Array.from(keyToNamespaces.get(key) || new Set([defaultNamespace]))
+    const savedLocales = new Set<string>([language])
+    
+    if (openai) {
+      config.locales.forEach(locale => {
+        if (locale !== language) {
+          const translated = translationCache.get(`${language}:${locale}`)
+          if (translated?.[key]) {
+            savedLocales.add(locale)
+          }
+        }
+      })
+    }
+    
+    return {
+      key,
+      value,
+      namespace: namespaces.join(", "),
+      locale: Array.from(savedLocales).sort().join(", "),
+    }
+  })
 
   return {
-    key,
-    value,
-    namespace: affectedNamespaces.join(", "), // Return all affected namespaces
-    locale: defaultLocale !== "en" ? `en, ${defaultLocale}` : locale,
+    results,
+    performance: {
+      totalTime,
+      scanTime,
+      translationTime,
+      fileIOTime: fileIOTime + writeTime,
+    },
   }
+}
+
+export const addTranslationKey = async ({
+  key,
+  value,
+  language = "en",
+  config,
+}: {
+  key: string
+  value: string
+  language?: string
+  config: Configuration
+}) => {
+  const startTime = performance.now()
+  const result = await addTranslationKeys({
+    keys: [{ key, value, language }],
+    config,
+  })
+  const totalTime = performance.now() - startTime
+  
+  const log = console.log
+  log(`⏱️  Single key operation completed in ${totalTime.toFixed(2)}ms`)
+  
+  return result.results[0]
 }

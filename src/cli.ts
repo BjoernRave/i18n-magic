@@ -5,6 +5,7 @@ import { checkMissing } from "./commands/check-missing.js"
 import { removeUnusedKeys } from "./commands/clean.js"
 
 import { replaceTranslation } from "./commands/replace.js"
+import { restoreFromNamespaces } from "./commands/restore-from-namespaces.js"
 import { translateMissing } from "./commands/scan.js"
 import { syncLocales } from "./commands/sync-locales.js"
 import type { CommandType, Configuration } from "./lib/types.js"
@@ -51,6 +52,12 @@ const commands: CommandType[] = [
     description:
       "Remove unused translations from all locales. Useful for a CI/CD pipeline or husky hook.",
     action: removeUnusedKeys,
+  },
+  {
+    name: "restore-from-namespaces",
+    description:
+      "Restore missing keys by searching for them in other namespace files across all locales.",
+    action: restoreFromNamespaces,
   },
 ]
 

@@ -139,4 +139,9 @@ export const languages = [
     name: "Vietnamese",
     value: "vn",
   },
+  {
+    label: "ไทย",
+    name: "Thai",
+    value: "th",
+  },
 ]
