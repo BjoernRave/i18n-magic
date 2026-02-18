@@ -3,7 +3,7 @@ import dotenv from "dotenv"
 import OpenAI from "openai"
 import { checkMissing } from "./commands/check-missing.js"
 import { removeUnusedKeys } from "./commands/clean.js"
-
+import { removeKey } from "./commands/remove-key.js"
 import { replaceTranslation } from "./commands/replace.js"
 import { restoreFromNamespaces } from "./commands/restore-from-namespaces.js"
 import { translateMissing } from "./commands/scan.js"
@@ -59,12 +59,18 @@ const commands: CommandType[] = [
       "Restore missing keys by searching for them in other namespace files across all locales.",
     action: restoreFromNamespaces,
   },
+  {
+    name: "remove-key",
+    description:
+      "Remove a specific translation key from all namespaces and locales.",
+    action: removeKey,
+  },
 ]
 
 for (const command of commands) {
   const cmd = program.command(command.name).description(command.description)
 
-  // Add key option to replace command
+  // Add key option to replace and remove-key commands
   if (command.name === "replace") {
     cmd
       .option("-k, --key <key>", "translation key to replace")
@@ -72,8 +78,15 @@ for (const command of commands) {
       .argument("[key]", "translation key to replace")
   }
 
+  if (command.name === "remove-key") {
+    cmd
+      .option("-k, --key <key>", "translation key to remove")
+      .allowExcessArguments(true)
+      .argument("[key]", "translation key to remove")
+  }
+
   cmd.action(async (arg, options) => {
-    const res = dotenv.config({
+    dotenv.config({
       path: program.opts().env || ".env",
     })
 
@@ -105,8 +118,8 @@ for (const command of commands) {
       }),
     })
 
-    // For replace command, check for key in argument or option
-    if (command.name === "replace") {
+    // For replace and remove-key commands, check for key in argument or option
+    if (command.name === "replace" || command.name === "remove-key") {
       // If key is provided as positional argument, use that first
       const keyToUse = typeof arg === "string" ? arg : options.key
       command.action({ ...config, openai }, keyToUse)

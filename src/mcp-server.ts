@@ -120,7 +120,9 @@ function resolveProjectRoot(): string {
 const AddTranslationKeySchema = z.object({
   key: z
     .string()
-    .describe('The translation key to add (e.g., "welcomeMessage")'),
+    .describe(
+      'The translation key to add (e.g., "welcomeMessage"). Namespace is auto-detected; optionally use "namespace:key" to force a namespace.',
+    ),
   value: z.string().describe("The text value for this translation key"),
   language: z
     .string()
@@ -137,7 +139,9 @@ const AddTranslationKeysSchema = z.object({
       z.object({
         key: z
           .string()
-          .describe('The translation key to add (e.g., "welcomeMessage")'),
+          .describe(
+            'The translation key to add (e.g., "welcomeMessage"). Namespace is auto-detected; optionally use "namespace:key" to force a namespace.',
+          ),
         value: z.string().describe("The text value for this translation key"),
         language: z
           .string()
@@ -153,26 +157,13 @@ const AddTranslationKeysSchema = z.object({
 })
 
 // Zod schema for the list_untranslated_keys tool parameters
-const ListUntranslatedKeysSchema = z.object({
-  namespace: z
-    .string()
-    .optional()
-    .describe(
-      "Optional namespace to check. If not provided, checks all namespaces.",
-    ),
-})
+const ListUntranslatedKeysSchema = z.object({})
 
 // Zod schema for the get_translation_key tool parameters
 const GetTranslationKeySchema = z.object({
   key: z
     .string()
     .describe('The translation key to retrieve (e.g., "welcomeMessage")'),
-  namespace: z
-    .string()
-    .optional()
-    .describe(
-      "Optional namespace to search in. If not provided, searches in default namespace first, then all namespaces.",
-    ),
 })
 
 // Zod schema for the update_translation_key tool parameters
@@ -186,12 +177,6 @@ const UpdateTranslationKeySchema = z.object({
     .optional()
     .describe(
       'The language code of the provided value (e.g., "en", "de", "fr"). Defaults to "en" (English) if not specified.',
-    ),
-  namespace: z
-    .string()
-    .optional()
-    .describe(
-      "Optional namespace to update. If not provided, updates the key in all namespaces where it exists.",
     ),
 })
 
@@ -280,14 +265,14 @@ class I18nMagicServer {
           {
             name: "add_translation_key",
             description:
-              "Add a new translation key with a text value. You can optionally specify the language of the value you're providing (defaults to English). For adding multiple keys at once, use add_translation_keys instead for better performance. NOTE: This tool can only ADD keys, it will NEVER remove any existing keys.",
+              "Add a new translation key with a text value. Namespace is resolved automatically from code usage and existing locale files. Optionally, force a namespace by prefixing the key as namespace:key. You can optionally specify the language of the value you're providing (defaults to English). For adding multiple keys at once, use add_translation_keys instead for better performance. NOTE: This tool can only ADD keys, it will NEVER remove any existing keys.",
             inputSchema: {
               type: "object",
               properties: {
                 key: {
                   type: "string",
                   description:
-                    'The translation key to add (e.g., "welcomeMessage")',
+                    'The translation key to add (e.g., "welcomeMessage"). Namespace is auto-detected; optionally use "namespace:key" to force a namespace.',
                 },
                 value: {
                   type: "string",
@@ -305,7 +290,7 @@ class I18nMagicServer {
           {
             name: "add_translation_keys",
             description:
-              "Add multiple translation keys in batch. This is optimized for performance - when adding 2 or more keys, prefer this over multiple add_translation_key calls. It performs a single codebase scan, batches file I/O operations, and batches translations for much better performance. NOTE: This tool can only ADD keys, it will NEVER remove any existing keys.",
+              "Add multiple translation keys in batch. Namespaces are resolved automatically per key from code usage and existing locale files; optionally force per-key namespace with namespace:key. This is optimized for performance - when adding 2 or more keys, prefer this over multiple add_translation_key calls. It performs a single codebase scan, batches file I/O operations, and batches translations for much better performance. NOTE: This tool can only ADD keys, it will NEVER remove any existing keys.",
             inputSchema: {
               type: "object",
               properties: {
@@ -318,7 +303,7 @@ class I18nMagicServer {
                       key: {
                         type: "string",
                         description:
-                          'The translation key to add (e.g., "welcomeMessage")',
+                          'The translation key to add (e.g., "welcomeMessage"). Namespace is auto-detected; optionally use "namespace:key" to force a namespace.',
                       },
                       value: {
                         type: "string",
@@ -340,16 +325,10 @@ class I18nMagicServer {
           {
             name: "list_untranslated_keys",
             description:
-              "List all translation keys that are used in the codebase but are not yet defined in the locale files. This helps identify missing translations that need to be added. The tool scans the codebase for translation keys and compares them against existing locale files. NOTE: This is a read-only tool that does not modify any files.",
+              "List all translation keys that are used in the codebase but are not yet defined in the locale files. This helps identify missing translations that need to be added. The tool scans the codebase for translation keys and compares them against existing locale files across all namespaces automatically. NOTE: This is a read-only tool that does not modify any files.",
             inputSchema: {
               type: "object",
-              properties: {
-                namespace: {
-                  type: "string",
-                  description:
-                    "Optional namespace to check. If not provided, checks all namespaces.",
-                },
-              },
+              properties: {},
               required: [],
             },
           },
@@ -364,11 +343,6 @@ class I18nMagicServer {
                   type: "string",
                   description:
                     'The translation key to retrieve (e.g., "welcomeMessage")',
-                },
-                namespace: {
-                  type: "string",
-                  description:
-                    "Optional namespace to search in. If not provided, searches in default namespace first, then all namespaces.",
                 },
               },
               required: ["key"],
@@ -394,11 +368,6 @@ class I18nMagicServer {
                   type: "string",
                   description:
                     'The language code of the provided value (e.g., "en" for English, "de" for German, "fr" for French). Defaults to "en" if not specified.',
-                },
-                namespace: {
-                  type: "string",
-                  description:
-                    "Optional namespace to update. If not provided, updates the key in all namespaces where it exists.",
                 },
               },
               required: ["key", "value"],
@@ -669,9 +638,7 @@ class I18nMagicServer {
       if (request.params.name === "list_untranslated_keys") {
         try {
           // Validate parameters
-          const params = ListUntranslatedKeysSchema.parse(
-            request.params.arguments,
-          )
+          ListUntranslatedKeysSchema.parse(request.params.arguments)
 
           // Ensure config is loaded
           const config = await this.ensureConfig()
@@ -689,17 +656,9 @@ class I18nMagicServer {
             console.log = originalConsoleLog
           }
 
-          // Filter by namespace if specified
-          let filteredKeys = missingKeys
-          if (params.namespace) {
-            filteredKeys = missingKeys.filter((item) =>
-              item.namespaces.includes(params.namespace!),
-            )
-          }
-
           // Extract just the keys (sorted and unique)
           const uniqueKeys = Array.from(
-            new Set(filteredKeys.map((item) => item.key)),
+            new Set(missingKeys.map((item) => item.key)),
           ).sort()
 
           return {
@@ -710,12 +669,12 @@ class I18nMagicServer {
                   {
                     success: true,
                     message:
-                      filteredKeys.length === 0
+                      missingKeys.length === 0
                         ? "No missing translation keys found! All keys used in the codebase are defined."
-                        : `Found ${filteredKeys.length} missing translation key${filteredKeys.length === 1 ? "" : "s"}`,
+                        : `Found ${missingKeys.length} missing translation key${missingKeys.length === 1 ? "" : "s"}`,
                     missingKeys: uniqueKeys,
                     nextSteps:
-                      filteredKeys.length > 0
+                      missingKeys.length > 0
                         ? [
                             "Use add_translation_key to add these keys with English values",
                             "Or run 'i18n-magic scan' to add them interactively",
@@ -786,52 +745,39 @@ class I18nMagicServer {
           let foundNamespace: string | null = null
 
           try {
-            // If namespace is specified, only check that namespace
-            if (params.namespace) {
+            // Try default namespace first
+            try {
               const keys = await loadLocalesFile(
                 config.loadPath,
                 "en",
-                params.namespace,
+                config.defaultNamespace,
               )
-              if (keys[params.key]) {
+              if (Object.hasOwn(keys, params.key)) {
                 foundValue = keys[params.key]
-                foundNamespace = params.namespace
+                foundNamespace = config.defaultNamespace
               }
-            } else {
-              // Try default namespace first
-              try {
-                const keys = await loadLocalesFile(
-                  config.loadPath,
-                  "en",
-                  config.defaultNamespace,
-                )
-                if (keys[params.key]) {
-                  foundValue = keys[params.key]
-                  foundNamespace = config.defaultNamespace
-                }
-              } catch (error) {
-                // Default namespace file doesn't exist or has issues, continue to search other namespaces
-              }
+            } catch (error) {
+              // Default namespace file doesn't exist or has issues, continue to search other namespaces
+            }
 
-              // If not found in default namespace, search all other namespaces
-              if (!foundValue) {
-                for (const namespace of config.namespaces) {
-                  if (namespace === config.defaultNamespace) continue // Already checked
+            // If not found in default namespace, search all other namespaces
+            if (foundValue === null) {
+              for (const namespace of config.namespaces) {
+                if (namespace === config.defaultNamespace) continue // Already checked
 
-                  try {
-                    const keys = await loadLocalesFile(
-                      config.loadPath,
-                      "en",
-                      namespace,
-                    )
-                    if (keys[params.key]) {
-                      foundValue = keys[params.key]
-                      foundNamespace = namespace
-                      break
-                    }
-                  } catch (error) {
-                    // Namespace file doesn't exist or has issues, continue
+                try {
+                  const keys = await loadLocalesFile(
+                    config.loadPath,
+                    "en",
+                    namespace,
+                  )
+                  if (Object.hasOwn(keys, params.key)) {
+                    foundValue = keys[params.key]
+                    foundNamespace = namespace
+                    break
                   }
+                } catch (error) {
+                  // Namespace file doesn't exist or has issues, continue
                 }
               }
             }
@@ -840,7 +786,7 @@ class I18nMagicServer {
             console.log = originalConsoleLog
           }
 
-          if (foundValue) {
+          if (foundValue !== null) {
             return {
               content: [
                 {
@@ -867,9 +813,9 @@ class I18nMagicServer {
                   text: JSON.stringify(
                     {
                       success: false,
-                      error: `Translation key "${params.key}" not found in English locale${params.namespace ? ` (namespace: ${params.namespace})` : ""}`,
+                      error: `Translation key "${params.key}" not found in English locale`,
                       key: params.key,
-                      searchedNamespace: params.namespace || "all namespaces",
+                      searchedNamespace: "all namespaces",
                       suggestion:
                         "Use list_untranslated_keys to see all missing keys or add_translation_key to add this key",
                     },
@@ -952,42 +898,26 @@ class I18nMagicServer {
               // Find which namespaces contain this key
               const targetNamespaces: string[] = []
 
-              if (params.namespace) {
-                // Check if key exists in specified namespace
-                const keys = await loadLocalesFile(
-                  config.loadPath,
-                  "en",
-                  params.namespace,
-                )
-                if (keys[params.key]) {
-                  targetNamespaces.push(params.namespace)
-                } else {
-                  throw new Error(
-                    `Key "${params.key}" does not exist in namespace "${params.namespace}"`,
+              // Find all namespaces where this key exists
+              for (const namespace of config.namespaces) {
+                try {
+                  const keys = await loadLocalesFile(
+                    config.loadPath,
+                    "en",
+                    namespace,
                   )
-                }
-              } else {
-                // Find all namespaces where this key exists
-                for (const namespace of config.namespaces) {
-                  try {
-                    const keys = await loadLocalesFile(
-                      config.loadPath,
-                      "en",
-                      namespace,
-                    )
-                    if (keys[params.key]) {
-                      targetNamespaces.push(namespace)
-                    }
-                  } catch (error) {
-                    // Namespace file doesn't exist, continue
+                  if (Object.hasOwn(keys, params.key)) {
+                    targetNamespaces.push(namespace)
                   }
+                } catch (error) {
+                  // Namespace file doesn't exist, continue
                 }
+              }
 
-                if (targetNamespaces.length === 0) {
-                  throw new Error(
-                    `Key "${params.key}" does not exist in any namespace. Use add_translation_key to create it.`,
-                  )
-                }
+              if (targetNamespaces.length === 0) {
+                throw new Error(
+                  `Key "${params.key}" does not exist in any namespace. Use add_translation_key to create it.`,
+                )
               }
 
               // Build translation cache with new value

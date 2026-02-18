@@ -30,11 +30,12 @@ Stop context switching. Let AI handle your translations while you stay in your c
 ## CLI Commands
 
 ```bash
-npx @scoutello/i18n-magic scan          # Find & add missing translations
-npx @scoutello/i18n-magic sync          # Translate to all languages
-npx @scoutello/i18n-magic replace [key] # Update existing translation
-npx @scoutello/i18n-magic clean         # Remove unused keys
-npx @scoutello/i18n-magic check-missing # CI/CD validation
+npx @scoutello/i18n-magic scan            # Find & add missing translations
+npx @scoutello/i18n-magic sync            # Translate to all languages
+npx @scoutello/i18n-magic replace [key]   # Update existing translation
+npx @scoutello/i18n-magic remove-key [key] # Remove a specific key
+npx @scoutello/i18n-magic clean           # Remove unused keys
+npx @scoutello/i18n-magic check-missing   # CI/CD validation
 ```
 
 **`scan`** - Scans your codebase for missing keys, prompts you for values, auto-translates to all locales.
@@ -42,6 +43,8 @@ npx @scoutello/i18n-magic check-missing # CI/CD validation
 **`sync`** - Takes your default locale translations and translates missing keys to other locales. Perfect for CI/CD.
 
 **`replace`** - Update an existing translation key across all locales. Detects which namespaces use the key automatically.
+
+**`remove-key`** - Remove a specific translation key from all namespaces and locales. Useful when deprecating keys.
 
 **`clean`** - Removes unused translation keys from all locales. Great for keeping files lean.
 
@@ -66,21 +69,24 @@ Result: Separate files per feature (`common.json`, `dashboard.json`, `mobile.jso
 
 **MCP (Model Context Protocol)** = API for AI agents.
 
-Install the i18n-magic MCP server in Cursor, and your AI gets 5 new tools:
+Install the i18n-magic MCP server in Cursor, and your AI gets 6 tools:
 
 ### 1. `search_translations` - Prevent Duplicates
 Fuzzy search across all translations. AI searches before adding anything.
 
 ### 2. `add_translation_key` - Add New Keys  
-Adds key to English (`en`) locale. Run `sync` afterward to translate to other languages.
+Adds a single key. If API translation is configured, it auto-translates to other locales; otherwise run `sync`.
 
-### 3. `get_translation_key` - Check What Exists
+### 3. `add_translation_keys` - Add Multiple Keys Fast
+Batch add 2+ keys in one call with better performance than multiple single-key calls.
+
+### 4. `get_translation_key` - Check What Exists
 Retrieve current value for any key.
 
-### 4. `update_translation_key` - Fix & Auto-Translate
+### 5. `update_translation_key` - Fix & Auto-Translate
 Update a key and **instantly translate to all languages**. No sync needed!
 
-### 5. `list_untranslated_keys` - Batch Check
+### 6. `list_untranslated_keys` - Batch Check
 Show all missing keys across your codebase.
 
 ---
@@ -160,9 +166,9 @@ Done! Test by asking: *"Search for translations with 'password'"*
 **Result**: No duplicate keys, instant code.
 
 If nothing exists:
-- AI adds key to English: `add_translation_key`
-- You run: `npx @scoutello/i18n-magic sync`
-- Translated to all languages!
+- AI adds key(s): `add_translation_key` or `add_translation_keys`
+- If API translation is configured, other locales are updated automatically
+- If not configured, run: `npx @scoutello/i18n-magic sync`
 
 ### Pattern 2: Updating Translations
 
@@ -329,7 +335,7 @@ ls -la i18n-magic.js
 npx @scoutello/i18n-magic sync
 ```
 
-`add_translation_key` only adds English. `sync` translates to other languages.
+`add_translation_key`/`add_translation_keys` translate automatically when API translation is configured; otherwise run `sync`.
 
 ### MCP Tools Not Appearing
 
