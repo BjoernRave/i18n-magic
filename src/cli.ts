@@ -1,7 +1,10 @@
 import { Command } from "commander"
 import dotenv from "dotenv"
 import OpenAI from "openai"
-import { checkMissing } from "./commands/check-missing.js"
+import {
+  checkMissing,
+  MissingTranslationsError,
+} from "./commands/check-missing.js"
 import { removeUnusedKeys } from "./commands/clean.js"
 import { removeKey } from "./commands/remove-key.js"
 import { replaceTranslation } from "./commands/replace.js"
@@ -103,30 +106,35 @@ for (const command of commands) {
     // Select appropriate key based on model type
     const key = isGemini ? geminiKey : openaiKey
 
-    if (!key) {
-      const keyType = isGemini ? "GEMINI_API_KEY" : "OPENAI_API_KEY"
-      console.error(
-        `Please provide a${isGemini ? " Gemini" : "n OpenAI"} API key in your i18n-magic config file as ${keyType}.`,
-      )
-      process.exit(1)
-    }
-
-    const openai = new OpenAI({
-      apiKey: key,
-      ...(isGemini && {
-        baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
-      }),
-    })
+    const openai =
+      config.openai ||
+      (key
+        ? new OpenAI({
+            apiKey: key,
+            ...(isGemini && {
+              baseURL:
+                "https://generativelanguage.googleapis.com/v1beta/openai/",
+            }),
+          })
+        : undefined)
 
     // For replace and remove-key commands, check for key in argument or option
     if (command.name === "replace" || command.name === "remove-key") {
       // If key is provided as positional argument, use that first
       const keyToUse = typeof arg === "string" ? arg : options.key
-      command.action({ ...config, openai }, keyToUse)
+      await command.action({ ...config, openai }, keyToUse)
     } else {
-      command.action({ ...config, openai })
+      await command.action({ ...config, openai })
     }
   })
 }
 
-program.parse(process.argv)
+program.parseAsync(process.argv).catch((error: unknown) => {
+  if (error instanceof MissingTranslationsError) {
+    process.exitCode = 1
+    return
+  }
+
+  console.error(error instanceof Error ? error.message : String(error))
+  process.exitCode = 1
+})

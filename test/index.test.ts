@@ -1,7 +1,10 @@
-import { sum } from '../src/index';
+import assert from "node:assert/strict"
+import test from "node:test"
+import * as packageExports from "../src/index.js"
 
-describe('sum', () => {
-  it('adds two numbers together', () => {
-    expect(sum(1, 1)).toEqual(2);
-  });
-});
+test("public entry point exposes the programmatic translation API", () => {
+  assert.equal(typeof packageExports.addTranslationKey, "function")
+  assert.equal(typeof packageExports.checkMissing, "function")
+  assert.equal(typeof packageExports.collectMissingTranslations, "function")
+  assert.equal(typeof packageExports.MissingTranslationsError, "function")
+})

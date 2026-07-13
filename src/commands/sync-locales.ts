@@ -1,10 +1,8 @@
-import fs from "node:fs"
 import chalk from "chalk"
 import cliProgress from "cli-progress"
 import { languages } from "../lib/languges.js"
 import type { Configuration } from "../lib/types.js"
 import {
-  findExistingTranslations,
   loadLocalesFile,
   TranslationError,
   translateKey,
@@ -51,34 +49,52 @@ export const syncLocales = async (config: Configuration) => {
   const localeResults: Record<
     string,
     {
-      status: "pending" | "processing" | "done" | "error"
+      status: "pending" | "processing" | "translating" | "done" | "error"
       translated: number
+      translationCompleted: number
+      translationTotal: number
       reused: number
       error?: string
     }
   > = {}
 
   for (const locale of localesToProcess) {
-    localeResults[locale] = { status: "pending", translated: 0, reused: 0 }
+    localeResults[locale] = {
+      status: "pending",
+      translated: 0,
+      translationCompleted: 0,
+      translationTotal: 0,
+      reused: 0,
+    }
   }
 
-  // Create a single progress bar for overall progress
-  const progressBar = new cliProgress.SingleBar(
+  const stagedFiles = new Map<
+    string,
+    { locale: string; namespace: string; translations: Record<string, string> }
+  >()
+
+  const progressBars = new cliProgress.MultiBar(
     {
-      format: `   {bar} {percentage}% | {current}/{total} | {lang} {status}`,
+      format: `   {label} {bar} {percentage}% | {value}/{total} | {duration_formatted} | {status}`,
       barCompleteChar: chalk.green("█"),
       barIncompleteChar: chalk.gray("░"),
       hideCursor: true,
       clearOnComplete: false,
+      emptyOnZero: true,
+      etaAsynchronousUpdate: true,
       barsize: 30,
     },
     cliProgress.Presets.shades_classic,
   )
 
-  progressBar.start(localesToProcess.length, 0, {
+  const localeProgressBar = progressBars.create(localesToProcess.length, 0, {
+    label: "Languages   ",
     status: "",
-    current: 0,
-    lang: "",
+  })
+
+  const translationProgressBar = progressBars.create(0, 0, {
+    label: "Translations",
+    status: "finding keys to translate...",
   })
 
   // Suppress console.log during progress bar display
@@ -86,63 +102,72 @@ export const syncLocales = async (config: Configuration) => {
   const suppressedLog = () => {}
 
   try {
-    // Helper to ensure a locale/namespace file exists before we add keys
-    const ensureLocaleNamespaceFile = async (
-      locale: string,
-      namespace: string,
-    ) => {
-      if (typeof savePath === "string") {
-        const filePath = savePath
-          .replace("{{lng}}", locale)
-          .replace("{{ns}}", namespace)
-        if (!fs.existsSync(filePath)) {
-          await writeLocalesFile(savePath, locale, namespace, {})
-        }
-      }
-    }
-
-    // Ensure all default-locale namespace files exist first
-    await Promise.all(
-      namespaces.map((namespace) =>
-        ensureLocaleNamespaceFile(defaultLocale, namespace),
-      ),
-    )
-
     // Process locales in parallel batches
     let completedCount = 0
     const currentlyProcessing: Set<string> = new Set()
 
-    // Helper to update progress bar with currently processing languages
+    // Helper to update progress bars with currently processing languages
     const updateProgressDisplay = () => {
       const processingArray = Array.from(currentlyProcessing)
-      const langs = processingArray
-        .slice(0, 3)
-        .map((l) => getLanguageLabel(l).substring(0, 8))
-        .join(", ")
-      const status = processingArray.length > 0 ? `processing ${langs}...` : ""
-      progressBar.update(completedCount, {
-        status,
-        current: completedCount,
-        lang: "",
+      const localeStatus =
+        processingArray.length > 0
+          ? `processing ${processingArray.join(", ")}`
+          : ""
+      localeProgressBar.update(completedCount, {
+        label: "Languages   ",
+        status: localeStatus,
+      })
+
+      const translationTotals = localesToProcess.reduce(
+        (totals, locale) => {
+          const result = localeResults[locale]
+          totals.completed += result.translationCompleted
+          totals.total += result.translationTotal
+          return totals
+        },
+        { completed: 0, total: 0 },
+      )
+      const translationTotal = translationTotals.total
+      const translationCurrent =
+        translationTotal > 0
+          ? Math.min(translationTotals.completed, translationTotal)
+          : 0
+      const activeTranslations = localesToProcess.filter((locale) => {
+        const result = localeResults[locale]
+        return (
+          currentlyProcessing.has(locale) &&
+          result.translationTotal > 0 &&
+          result.translationCompleted < result.translationTotal
+        )
+      })
+      const translationStatus =
+        activeTranslations.length > 0
+          ? `translating ${activeTranslations
+              .map((locale) => {
+                const result = localeResults[locale]
+                return `${locale} ${result.translationCompleted}/${result.translationTotal}`
+              })
+              .join(", ")}`
+          : processingArray.length > 0
+            ? "waiting for translation work..."
+            : translationTotal > 0
+              ? "translations complete"
+              : "finding keys to translate..."
+
+      translationProgressBar.setTotal(translationTotal)
+      translationProgressBar.update(translationCurrent, {
+        label: "Translations",
+        status: translationStatus,
       })
     }
 
     // Process a single locale
     const processLocale = async (locale: string) => {
-      const langLabel = getLanguageLabel(locale)
-      const shortLang = langLabel.substring(0, 10).padEnd(10)
       localeResults[locale].status = "processing"
       currentlyProcessing.add(locale)
       updateProgressDisplay()
 
       try {
-        // Ensure all namespace files for this locale exist
-        await Promise.all(
-          namespaces.map((namespace) =>
-            ensureLocaleNamespaceFile(locale, namespace),
-          ),
-        )
-
         // Collect all missing keys for this locale across all namespaces
         const allMissingKeys: Record<
           string,
@@ -181,7 +206,7 @@ export const syncLocales = async (config: Configuration) => {
           namespaceKeys[namespace] = localeKeys
 
           for (const [key, value] of Object.entries(defaultLocaleKeys)) {
-            if (!localeKeys[key]) {
+            if (!Object.hasOwn(localeKeys, key)) {
               if (allMissingKeys[key]) {
                 allMissingKeys[key].namespaces.push(namespace)
               } else {
@@ -208,18 +233,12 @@ export const syncLocales = async (config: Configuration) => {
         const keysToTranslate: Record<string, string> = {}
         const existingTranslations: Record<string, string> = {}
 
-        const existingTranslationResults = await findExistingTranslations(
-          missingKeysList,
-          namespaces,
-          locale,
-          loadPath,
-          { silent: true },
-        )
-
         for (const key of missingKeysList) {
-          const existingValue = existingTranslationResults[key]
-          if (existingValue !== null) {
-            existingTranslations[key] = existingValue
+          const existingNamespace = namespaces.find((namespace) =>
+            Object.hasOwn(namespaceKeys[namespace], key),
+          )
+          if (existingNamespace !== undefined) {
+            existingTranslations[key] = namespaceKeys[existingNamespace][key]
             localeResults[locale].reused++
           } else {
             keysToTranslate[key] = allMissingKeys[key].value
@@ -231,6 +250,12 @@ export const syncLocales = async (config: Configuration) => {
         // Translate if needed
         if (Object.keys(keysToTranslate).length > 0) {
           try {
+            localeResults[locale].status = "translating"
+            localeResults[locale].translationCompleted = 0
+            localeResults[locale].translationTotal =
+              Object.keys(keysToTranslate).length
+            updateProgressDisplay()
+
             translatedValues = await translateKey({
               inputLanguage: defaultLocale,
               outputLanguage: locale,
@@ -239,9 +264,13 @@ export const syncLocales = async (config: Configuration) => {
               openai,
               model: config.model,
               onProgress: (completed, total) => {
-                // Progress callback still works but doesn't update UI during parallel processing
+                localeResults[locale].translationCompleted = completed
+                localeResults[locale].translationTotal = total
+                updateProgressDisplay()
               },
             })
+            localeResults[locale].translationCompleted =
+              Object.keys(keysToTranslate).length
             localeResults[locale].translated =
               Object.keys(translatedValues).length
           } catch (error) {
@@ -258,24 +287,25 @@ export const syncLocales = async (config: Configuration) => {
         // Combine and save
         const allTranslations = { ...existingTranslations, ...translatedValues }
 
-        await Promise.all(
-          namespaces.map(async (namespace) => {
-            let hasChanges = false
-            const updatedKeys = { ...namespaceKeys[namespace] }
+        for (const namespace of namespaces) {
+          let hasChanges = false
+          const updatedKeys = { ...namespaceKeys[namespace] }
 
-            for (const key of missingKeysList) {
-              if (allMissingKeys[key].namespaces.includes(namespace)) {
-                const translation = allTranslations[key] || ""
-                updatedKeys[key] = translation
-                hasChanges = true
-              }
+          for (const key of missingKeysList) {
+            if (allMissingKeys[key].namespaces.includes(namespace)) {
+              updatedKeys[key] = allTranslations[key]
+              hasChanges = true
             }
+          }
 
-            if (hasChanges) {
-              await writeLocalesFile(savePath, locale, namespace, updatedKeys)
-            }
-          }),
-        )
+          if (hasChanges) {
+            stagedFiles.set(JSON.stringify([locale, namespace]), {
+              locale,
+              namespace,
+              translations: updatedKeys,
+            })
+          }
+        }
 
         localeResults[locale].status = "done"
         currentlyProcessing.delete(locale)
@@ -303,7 +333,20 @@ export const syncLocales = async (config: Configuration) => {
     // Restore console.log
     console.log = originalConsoleLog
 
-    progressBar.stop()
+    progressBars.stop()
+
+    const errorLocales = localesToProcess.filter(
+      (locale) => localeResults[locale].status === "error",
+    )
+    if (errorLocales.length > 0) {
+      throw new TranslationError(
+        `Sync failed for ${errorLocales.length} locale(s); no translations were written.`,
+      )
+    }
+
+    for (const { locale, namespace, translations } of stagedFiles.values()) {
+      await writeLocalesFile(savePath, locale, namespace, translations)
+    }
 
     // Print summary
     console.log("")
@@ -328,10 +371,6 @@ export const syncLocales = async (config: Configuration) => {
     const doneLocales = localesToProcess.filter(
       (l) => localeResults[l].status === "done",
     )
-    const errorLocales = localesToProcess.filter(
-      (l) => localeResults[l].status === "error",
-    )
-
     // Show successful languages in a compact grid
     if (doneLocales.length > 0) {
       const columns = 3
@@ -381,7 +420,7 @@ export const syncLocales = async (config: Configuration) => {
   } catch (error) {
     // Restore console.log
     console.log = originalConsoleLog
-    progressBar.stop()
+    progressBars.stop()
     if (error instanceof TranslationError) {
       throw error
     }

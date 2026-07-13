@@ -67,12 +67,12 @@ If you need to manually specify the project root, you can use one of these optio
 
 ## Overview
 
-The i18n-magic MCP server allows LLMs to add missing translation keys directly to your translation files. When the LLM identifies a missing translation key while coding, it can use the MCP server to add the key with an English value, which can then be translated to other languages using the existing `sync` command.
+The i18n-magic MCP server allows LLMs to add missing translation keys directly to your translation files. When the LLM identifies a missing translation key while coding, it can use the MCP server to add the key in any configured locale. Omitted language values use `defaultLocale`.
 
 ## Features
 
-- **Add Translation Keys**: Add new translation keys with English values
-- **Update Translation Keys**: Update existing translation keys with new values (auto-translates to all languages)
+- **Add Translation Keys**: Add new translation keys using a configured locale
+- **Update Translation Keys**: Update all locales with a provider, or only the source locale without one
 - **Search Translations**: Fuzzy search across both keys and values to find existing translations
 - **Get Translation Value**: Retrieve the English value for any translation key
 - **List Missing Keys**: Scan your codebase to identify all untranslated keys
@@ -230,7 +230,7 @@ Adds a new translation key with a text value to the locale files.
 **Parameters:**
 - `key` (required): The translation key to add (e.g., "welcomeMessage", "error.notFound")
 - `value` (required): The text value for this translation key
-- `language` (optional): Language code of the provided value (defaults to `"en"`)
+- `language` (optional): Configured language code of the provided value (defaults to `defaultLocale`)
 
 **Example Usage:**
 
@@ -257,7 +257,7 @@ Adds multiple translation keys in one batch call. This is the recommended tool f
 - `keys` (required): Array of objects with:
   - `key` (required): Translation key (supports `namespace:key` to force namespace)
   - `value` (required): Text value
-  - `language` (optional): Language code of provided value (defaults to `"en"`)
+  - `language` (optional): Configured language code of the provided value (defaults to `defaultLocale`)
 
 **Example Usage:**
 
@@ -311,12 +311,12 @@ Retrieves the English value for a specific translation key.
 
 ### update_translation_key
 
-Updates an existing translation key with a new English value and automatically translates it to all configured locales.
+Updates an existing translation key using the supplied configured locale, or `defaultLocale` when omitted.
 
 **Parameters:**
 - `key` (required): The translation key to update (e.g., "welcomeMessage")
 - `value` (required): The new text value
-- `language` (optional): Language code of the provided value (defaults to `"en"`)
+- `language` (optional): Configured language code of the provided value (defaults to `defaultLocale`)
 
 **Example Usage:**
 
@@ -339,20 +339,25 @@ Updates an existing translation key with a new English value and automatically t
 ```json
 {
   "success": true,
-  "message": "Successfully updated translation key 'welcomeMessage' in 2 namespace(s) and 4 locale(s)",
+  "message": "Successfully updated translation key 'welcomeMessage' in 4 locale(s)",
   "key": "welcomeMessage",
   "newValue": "Welcome to our awesome application!",
-  "namespaces": ["common", "mobile"],
-  "locales": ["en", "de", "es", "fr"]
+  "providedLanguage": "en",
+  "updatedLocales": ["en", "de", "es", "fr"],
+  "pendingLocales": [],
+  "locales": ["en", "de", "es", "fr"],
+  "nextStep": "All configured locales were updated."
 }
 ```
 
 **Important Notes:**
-- **Automatically translates** the new value to all configured locales using AI
+- With a provider, every target locale is translated and validated before any locale is written
+- Without a provider, only the supplied/default locale is updated; `pendingLocales` lists the untouched locales and `nextStep` instructs you to run `sync`
+- `locales` remains an alias of `updatedLocales` for compatibility
 - Updates the key in all namespaces where it exists
 - Use this to fix typos, improve wording, or change existing translations
 - If you're not sure if a key exists, use `get_translation_key` or `search_translations` first
-- No need to run `sync` afterwards - translation happens immediately
+- Invalid provider responses are retried once; a second invalid response aborts the update without writes
 
 **When to use:**
 - Fix typos in existing translations
@@ -500,8 +505,8 @@ Lists all translation keys that are used in the codebase but are not yet defined
 ### Workflow 2: Updating Existing Keys
 1. **Find the Key**: Use `search_translations` or `get_translation_key` to find the key to update
 2. **Update via MCP**: The LLM calls `update_translation_key` with the new English value
-3. **Automatic Translation**: The tool automatically translates to all configured locales (no sync needed!)
-4. **Use in Code**: Updated translation is immediately available in all languages
+3. **Translate or Defer**: With a provider, all locales update together. Without one, the response lists pending locales.
+4. **Sync if Needed**: Run `i18n-magic sync` when `pendingLocales` is not empty
 
 ### Workflow 3: Batch Checking Missing Keys
 1. **Check for Missing Keys**: The LLM calls `list_untranslated_keys` to get a complete list
@@ -713,13 +718,14 @@ Here's what happens when fixing a typo or improving wording:
 5. Server responds:
    {
      "success": true,
-     "message": "Successfully updated translation key 'welcomeMessage' in 1 namespace(s) and 4 locale(s)",
+     "message": "Successfully updated translation key 'welcomeMessage' in 4 locale(s)",
      "key": "welcomeMessage",
      "newValue": "Welcome back!",
-     "namespaces": ["common"],
+     "updatedLocales": ["en", "de", "es", "fr"],
+     "pendingLocales": [],
      "locales": ["en", "de", "es", "fr"]
    }
-6. Key is immediately updated in ALL languages (no sync needed!)
+6. With a provider, every locale is validated before the update is committed.
 7. English: "Welcome back!"
    German: "Willkommen zurück!"
    Spanish: "¡Bienvenido de nuevo!"
@@ -755,8 +761,8 @@ Here's what happens when checking for all missing translations:
 
 ## Notes
 
-- `add_translation_key` and `add_translation_keys` accept an optional `language` input and can auto-translate when API translation is configured
-- `update_translation_key` automatically translates to all configured languages (no sync needed!)
+- `add_translation_key` and `add_translation_keys` accept an optional configured `language`; omission uses `defaultLocale`
+- `update_translation_key` returns `updatedLocales` and `pendingLocales`; without a provider, run `sync` for pending locales
 - `search_translations` performs fuzzy search on both keys and values to help find existing translations
 - `get_translation_key` retrieves the English value for any key
 - `list_untranslated_keys` returns a flat `missingKeys` array

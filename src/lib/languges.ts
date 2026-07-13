@@ -22,7 +22,17 @@ export const languages = [
   {
     label: "Dansk",
     name: "Danish",
+    value: "da",
+  },
+  {
+    label: "Dansk",
+    name: "Danish",
     value: "dk",
+  },
+  {
+    label: "中文",
+    name: "Chinese",
+    value: "zh",
   },
   {
     label: "中文",
@@ -143,5 +153,15 @@ export const languages = [
     label: "ไทย",
     name: "Thai",
     value: "th",
+  },
+  {
+    label: "العربية",
+    name: "Arabic",
+    value: "ar",
+  },
+  {
+    label: "فارسی",
+    name: "Persian",
+    value: "fa",
   },
 ]

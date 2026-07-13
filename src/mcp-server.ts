@@ -10,6 +10,7 @@ import path from "path"
 import { fileURLToPath } from "url"
 import { z } from "zod"
 import type { Configuration } from "./lib/types.js"
+import { updateTranslationKeyOperation } from "./lib/update-translation-key.js"
 import {
   addTranslationKey,
   addTranslationKeys,
@@ -60,6 +61,21 @@ const translationMutex = new AsyncMutex()
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+const redirectConsoleOutputToStderr = () => {
+  const writeToStderr = (...args: unknown[]) => {
+    console.error(...args)
+  }
+
+  console.log = writeToStderr
+  console.info = writeToStderr
+  console.warn = writeToStderr
+  console.debug = writeToStderr
+}
+
+// MCP stdio transport reserves stdout for protocol JSON-RPC messages.
+// User config files and storage helpers may log while the server is running.
+redirectConsoleOutputToStderr()
+
 // Helper function to find project root by looking for i18n-magic.js
 function findProjectRoot(startDir: string): string | null {
   let currentDir = startDir
@@ -80,6 +96,15 @@ function findProjectRoot(startDir: string): string | null {
 function resolveProjectRoot(): string {
   // 1. Check for --project-root CLI argument
   const args = process.argv.slice(2)
+  const projectRootArg = args.find((arg) => arg.startsWith("--project-root="))
+  if (projectRootArg) {
+    const projectRoot = projectRootArg.slice("--project-root=".length)
+    console.error(
+      `[i18n-magic MCP] Using project root from --project-root: ${projectRoot}`,
+    )
+    return path.resolve(projectRoot)
+  }
+
   const projectRootIndex = args.indexOf("--project-root")
   if (projectRootIndex !== -1 && args[projectRootIndex + 1]) {
     const projectRoot = args[projectRootIndex + 1]
@@ -98,17 +123,27 @@ function resolveProjectRoot(): string {
     return path.resolve(projectRoot)
   }
 
-  // 3. Try to auto-detect project root from script location
-  // When installed in node_modules, traverse up to find i18n-magic.js
+  // 3. Try to auto-detect from the MCP client's working directory.
+  // This supports portable configs like `pnpm exec i18n-magic-mcp`.
+  const cwdDetected = findProjectRoot(process.cwd())
+  if (cwdDetected) {
+    console.error(
+      `[i18n-magic MCP] Auto-detected project root from cwd: ${cwdDetected}`,
+    )
+    return cwdDetected
+  }
+
+  // 4. Try to auto-detect project root from script location.
+  // When installed in node_modules, traverse up to find i18n-magic.js.
   const autoDetected = findProjectRoot(__dirname)
   if (autoDetected) {
     console.error(
-      `[i18n-magic MCP] Auto-detected project root: ${autoDetected}`,
+      `[i18n-magic MCP] Auto-detected project root from package location: ${autoDetected}`,
     )
     return autoDetected
   }
 
-  // 4. Fall back to current working directory
+  // 5. Fall back to current working directory
   const cwd = process.cwd()
   console.error(
     `[i18n-magic MCP] Using current working directory as project root: ${cwd}`,
@@ -121,14 +156,14 @@ const AddTranslationKeySchema = z.object({
   key: z
     .string()
     .describe(
-      'The translation key to add (e.g., "welcomeMessage"). Namespace is auto-detected; optionally use "namespace:key" to force a namespace.',
+      'The translation key to add (e.g., "welcomeMessage").',
     ),
   value: z.string().describe("The text value for this translation key"),
   language: z
     .string()
     .optional()
     .describe(
-      'The language code of the provided value (e.g., "en", "de", "fr"). Defaults to "en" (English) if not specified.',
+      "The configured language code of the provided value. Defaults to config.defaultLocale if not specified.",
     ),
 })
 
@@ -140,14 +175,14 @@ const AddTranslationKeysSchema = z.object({
         key: z
           .string()
           .describe(
-            'The translation key to add (e.g., "welcomeMessage"). Namespace is auto-detected; optionally use "namespace:key" to force a namespace.',
+            'The translation key to add (e.g., "welcomeMessage").',
           ),
         value: z.string().describe("The text value for this translation key"),
         language: z
           .string()
           .optional()
           .describe(
-            'The language code of the provided value (e.g., "en", "de", "fr"). Defaults to "en" (English) if not specified.',
+            "The configured language code of the provided value. Defaults to config.defaultLocale if not specified.",
           ),
       }),
     )
@@ -176,7 +211,7 @@ const UpdateTranslationKeySchema = z.object({
     .string()
     .optional()
     .describe(
-      'The language code of the provided value (e.g., "en", "de", "fr"). Defaults to "en" (English) if not specified.',
+      "The configured language code of the provided value. Defaults to config.defaultLocale if not specified.",
     ),
 })
 
@@ -265,14 +300,14 @@ class I18nMagicServer {
           {
             name: "add_translation_key",
             description:
-              "Add a new translation key with a text value. Namespace is resolved automatically from code usage and existing locale files. Optionally, force a namespace by prefixing the key as namespace:key. You can optionally specify the language of the value you're providing (defaults to English). For adding multiple keys at once, use add_translation_keys instead for better performance. NOTE: This tool can only ADD keys, it will NEVER remove any existing keys.",
+              "Add a new translation key with a text value. The destination translation file is resolved automatically from project configuration and code usage. The language defaults to the configured defaultLocale. For adding multiple keys at once, use add_translation_keys instead for better performance. NOTE: This tool can only ADD keys, it will NEVER remove any existing keys.",
             inputSchema: {
               type: "object",
               properties: {
                 key: {
                   type: "string",
                   description:
-                    'The translation key to add (e.g., "welcomeMessage"). Namespace is auto-detected; optionally use "namespace:key" to force a namespace.',
+                    'The translation key to add (e.g., "welcomeMessage").',
                 },
                 value: {
                   type: "string",
@@ -281,7 +316,7 @@ class I18nMagicServer {
                 language: {
                   type: "string",
                   description:
-                    'The language code of the provided value (e.g., "en" for English, "de" for German, "fr" for French). Defaults to "en" if not specified.',
+                    "The configured language code of the provided value. Defaults to config.defaultLocale if not specified.",
                 },
               },
               required: ["key", "value"],
@@ -290,7 +325,7 @@ class I18nMagicServer {
           {
             name: "add_translation_keys",
             description:
-              "Add multiple translation keys in batch. Namespaces are resolved automatically per key from code usage and existing locale files; optionally force per-key namespace with namespace:key. This is optimized for performance - when adding 2 or more keys, prefer this over multiple add_translation_key calls. It performs a single codebase scan, batches file I/O operations, and batches translations for much better performance. NOTE: This tool can only ADD keys, it will NEVER remove any existing keys.",
+              "Add multiple translation keys in batch. Destination translation files are resolved automatically per key from project configuration and code usage. This is optimized for performance - when adding 2 or more keys, prefer this over multiple add_translation_key calls. It performs a single codebase scan, batches file I/O operations, and batches translations for much better performance. NOTE: This tool can only ADD keys, it will NEVER remove any existing keys.",
             inputSchema: {
               type: "object",
               properties: {
@@ -303,7 +338,7 @@ class I18nMagicServer {
                       key: {
                         type: "string",
                         description:
-                          'The translation key to add (e.g., "welcomeMessage"). Namespace is auto-detected; optionally use "namespace:key" to force a namespace.',
+                          'The translation key to add (e.g., "welcomeMessage").',
                       },
                       value: {
                         type: "string",
@@ -312,7 +347,7 @@ class I18nMagicServer {
                       language: {
                         type: "string",
                         description:
-                          'The language code of the provided value (e.g., "en" for English, "de" for German, "fr" for French). Defaults to "en" if not specified.',
+                          "The configured language code of the provided value. Defaults to config.defaultLocale if not specified.",
                       },
                     },
                     required: ["key", "value"],
@@ -325,7 +360,7 @@ class I18nMagicServer {
           {
             name: "list_untranslated_keys",
             description:
-              "List all translation keys that are used in the codebase but are not yet defined in the locale files. This helps identify missing translations that need to be added. The tool scans the codebase for translation keys and compares them against existing locale files across all namespaces automatically. NOTE: This is a read-only tool that does not modify any files.",
+              "List all translation keys that are used in the codebase but are not yet defined in the locale files. This helps identify missing translations that need to be added. The tool scans the codebase for translation keys and compares them against existing locale files automatically. NOTE: This is a read-only tool that does not modify any files.",
             inputSchema: {
               type: "object",
               properties: {},
@@ -351,7 +386,7 @@ class I18nMagicServer {
           {
             name: "update_translation_key",
             description:
-              "Update an existing translation key with a new text value. You can optionally specify the language of the value you're providing (defaults to English). This will update the key across all locales (translating automatically to other languages) and all namespaces where the key exists. Use this when you need to fix typos, improve wording, or change the text of an existing translation. If you're not sure if a key exists, use get_translation_key or search_translations first. NOTE: This tool can only UPDATE existing keys, it will NEVER remove any keys.",
+              "Update an existing translation key with a new text value. The language defaults to the configured defaultLocale. With a provider, every locale is translated before writes begin. Without a provider, only the supplied/default locale is updated and other locales are returned as pending. NOTE: This tool can only UPDATE existing keys, it will NEVER remove any keys.",
             inputSchema: {
               type: "object",
               properties: {
@@ -367,7 +402,7 @@ class I18nMagicServer {
                 language: {
                   type: "string",
                   description:
-                    'The language code of the provided value (e.g., "en" for English, "de" for German, "fr" for French). Defaults to "en" if not specified.',
+                    "The configured language code of the provided value. Defaults to config.defaultLocale if not specified.",
                 },
               },
               required: ["key", "value"],
@@ -376,14 +411,14 @@ class I18nMagicServer {
           {
             name: "search_translations",
             description:
-              "Search for translations by keyword or phrase across ALL namespaces. This tool performs fuzzy search across both translation keys AND their English values, making it perfect for finding existing translations before adding new ones. Use this to: 1) Check if similar text already exists to avoid duplicates, 2) Find the key name when you only remember part of the text, 3) Discover related translations. Always returns the key name AND English value for each result. NOTE: This is a read-only tool that does not modify any files.",
+              "Search for translations by keyword or phrase across all translation files. This tool performs fuzzy search across both translation keys AND their English values, making it perfect for finding existing translations before adding new ones. Use this to: 1) Check if similar text already exists to avoid duplicates, 2) Find the key name when you only remember part of the text, 3) Discover related translations. Always returns the key name AND English value for each result. NOTE: This is a read-only tool that does not modify any files.",
             inputSchema: {
               type: "object",
               properties: {
                 query: {
                   type: "string",
                   description:
-                    "Search term to find in translation keys or values (e.g., 'password', 'welcome', 'click'). Fuzzy search - doesn't need to be exact. Searches across all namespaces.",
+                    "Search term to find in translation keys or values (e.g., 'password', 'welcome', 'click'). Fuzzy search - doesn't need to be exact. Searches across all translation files.",
                 },
               },
               required: ["query"],
@@ -403,28 +438,18 @@ class I18nMagicServer {
           // Ensure config is loaded
           const config = await this.ensureConfig()
 
-          // Capture console.log output for diagnostics
+          // Suppress console.log to prevent interference with MCP JSON protocol
           const originalConsoleLog = console.log
-          const logMessages: string[] = []
-          console.log = (...args: any[]) => {
-            const message = args
-              .map((arg) =>
-                typeof arg === "object" ? JSON.stringify(arg) : String(arg),
-              )
-              .join(" ")
-            logMessages.push(message)
-            // Also log to stderr for debugging
-            console.error(`[i18n-magic] ${message}`)
-          }
+          console.log = () => {}
 
-          let result
+          let result: Awaited<ReturnType<typeof addTranslationKey>>
           try {
             // Add the translation key - use mutex to prevent concurrent writes
             result = await translationMutex.withLock(async () => {
               return await addTranslationKey({
                 key: params.key,
                 value: params.value,
-                language: params.language || "en",
+                language: params.language,
                 config,
               })
             })
@@ -440,16 +465,14 @@ class I18nMagicServer {
                 text: JSON.stringify(
                   {
                     success: true,
-                    message: `Successfully added translation key "${result.key}" to affected namespaces: ${result.namespace} (locales: ${result.locale})`,
+                    message: `Successfully added translation key "${result.key}"`,
                     key: result.key,
                     value: result.value,
-                    providedLanguage: params.language || "en",
-                    namespace: result.namespace,
+                    providedLanguage: result.providedLanguage,
                     locales: result.locale,
                     nextStep: result.locale.includes(",")
                       ? "Key was automatically translated to multiple locales"
                       : "Run 'i18n-magic sync' to translate this key to other locales",
-                    diagnostics: logMessages.join("\n"),
                   },
                   null,
                   2,
@@ -489,7 +512,6 @@ class I18nMagicServer {
                   {
                     success: false,
                     error: errorMessage,
-                    details: errorDetails,
                   },
                   null,
                   2,
@@ -531,21 +553,11 @@ class I18nMagicServer {
           // Ensure config is loaded
           const config = await this.ensureConfig()
 
-          // Capture console.log output for diagnostics
+          // Suppress console.log to prevent interference with MCP JSON protocol
           const originalConsoleLog = console.log
-          const logMessages: string[] = []
-          console.log = (...args: any[]) => {
-            const message = args
-              .map((arg) =>
-                typeof arg === "object" ? JSON.stringify(arg) : String(arg),
-              )
-              .join(" ")
-            logMessages.push(message)
-            // Also log to stderr for debugging
-            console.error(`[i18n-magic] ${message}`)
-          }
+          console.log = () => {}
 
-          let result
+          let result: Awaited<ReturnType<typeof addTranslationKeys>>
           try {
             // Add the translation keys in batch - use mutex to prevent concurrent writes
             result = await translationMutex.withLock(async () => {
@@ -553,7 +565,7 @@ class I18nMagicServer {
                 keys: params.keys.map((k) => ({
                   key: k.key,
                   value: k.value,
-                  language: k.language || "en",
+                  language: k.language,
                 })),
                 config,
               })
@@ -563,6 +575,12 @@ class I18nMagicServer {
             console.log = originalConsoleLog
           }
 
+          const sanitizedResults = result.results.map((entry) => ({
+            key: entry.key,
+            value: entry.value,
+            locale: entry.locale,
+          }))
+
           return {
             content: [
               {
@@ -571,7 +589,7 @@ class I18nMagicServer {
                   {
                     success: true,
                     message: `Successfully added ${result.results.length} translation key(s) in batch`,
-                    results: result.results,
+                    results: sanitizedResults,
                     performance: result.performance,
                     summary: {
                       totalKeys: result.results.length,
@@ -581,7 +599,6 @@ class I18nMagicServer {
                       translationTime: `${result.performance.translationTime.toFixed(2)}ms`,
                       fileIOTime: `${result.performance.fileIOTime.toFixed(2)}ms`,
                     },
-                    diagnostics: logMessages.join("\n"),
                   },
                   null,
                   2,
@@ -623,7 +640,6 @@ class I18nMagicServer {
                   {
                     success: false,
                     error: errorMessage,
-                    details: errorDetails,
                   },
                   null,
                   2,
@@ -647,7 +663,7 @@ class I18nMagicServer {
           const originalConsoleLog = console.log
           console.log = () => {}
 
-          let missingKeys
+          let missingKeys: Awaited<ReturnType<typeof getMissingKeys>>
           try {
             // Get missing keys from the codebase
             missingKeys = await getMissingKeys(config)
@@ -717,7 +733,6 @@ class I18nMagicServer {
                   {
                     success: false,
                     error: errorMessage,
-                    details: errorDetails,
                   },
                   null,
                   2,
@@ -742,7 +757,6 @@ class I18nMagicServer {
           console.log = () => {}
 
           let foundValue: string | null = null
-          let foundNamespace: string | null = null
 
           try {
             // Try default namespace first
@@ -754,7 +768,6 @@ class I18nMagicServer {
               )
               if (Object.hasOwn(keys, params.key)) {
                 foundValue = keys[params.key]
-                foundNamespace = config.defaultNamespace
               }
             } catch (error) {
               // Default namespace file doesn't exist or has issues, continue to search other namespaces
@@ -773,7 +786,6 @@ class I18nMagicServer {
                   )
                   if (Object.hasOwn(keys, params.key)) {
                     foundValue = keys[params.key]
-                    foundNamespace = namespace
                     break
                   }
                 } catch (error) {
@@ -796,7 +808,6 @@ class I18nMagicServer {
                       success: true,
                       key: params.key,
                       value: foundValue,
-                      namespace: foundNamespace,
                       locale: "en",
                     },
                     null,
@@ -815,7 +826,6 @@ class I18nMagicServer {
                       success: false,
                       error: `Translation key "${params.key}" not found in English locale`,
                       key: params.key,
-                      searchedNamespace: "all namespaces",
                       suggestion:
                         "Use list_untranslated_keys to see all missing keys or add_translation_key to add this key",
                     },
@@ -857,7 +867,6 @@ class I18nMagicServer {
                   {
                     success: false,
                     error: errorMessage,
-                    details: errorDetails,
                   },
                   null,
                   2,
@@ -881,116 +890,17 @@ class I18nMagicServer {
 
           // Suppress console.log to prevent interference with MCP JSON protocol
           const originalConsoleLog = console.log
-          const logMessages: string[] = []
-          console.log = (...args: any[]) => {
-            const message = args
-              .map((arg) =>
-                typeof arg === "object" ? JSON.stringify(arg) : String(arg),
-              )
-              .join(" ")
-            logMessages.push(message)
-            console.error(`[i18n-magic] ${message}`)
-          }
+          console.log = () => {}
 
           try {
-            // Use mutex to prevent concurrent writes
-            const result = await translationMutex.withLock(async () => {
-              // Find which namespaces contain this key
-              const targetNamespaces: string[] = []
-
-              // Find all namespaces where this key exists
-              for (const namespace of config.namespaces) {
-                try {
-                  const keys = await loadLocalesFile(
-                    config.loadPath,
-                    "en",
-                    namespace,
-                  )
-                  if (Object.hasOwn(keys, params.key)) {
-                    targetNamespaces.push(namespace)
-                  }
-                } catch (error) {
-                  // Namespace file doesn't exist, continue
-                }
-              }
-
-              if (targetNamespaces.length === 0) {
-                throw new Error(
-                  `Key "${params.key}" does not exist in any namespace. Use add_translation_key to create it.`,
-                )
-              }
-
-              // Build translation cache with new value
-              const inputLanguage = params.language || "en"
-              const translationCache: Record<string, string> = {
-                [inputLanguage]: params.value,
-              }
-
-              // Translate to all other locales
-              const otherLocales = config.locales.filter(
-                (l) => l !== inputLanguage,
-              )
-              if (otherLocales.length > 0 && config.openai) {
-                const { translateKey } = await import("./lib/utils.js")
-
-                await Promise.all(
-                  otherLocales.map(async (locale) => {
-                    const translation = await translateKey({
-                      context: config.context || "",
-                      inputLanguage: inputLanguage,
-                      outputLanguage: locale,
-                      object: {
-                        [params.key]: params.value,
-                      },
-                      openai: config.openai!,
-                      model: config.model,
-                    })
-                    translationCache[locale] = translation[params.key]
-                  }),
-                )
-              }
-
-              // Update the key in all relevant namespaces and locales
-              // Process sequentially to avoid race conditions
-              const { writeLocalesFile } = await import("./lib/utils.js")
-
-              for (const namespace of targetNamespaces) {
-                for (const locale of config.locales) {
-                  const newValue = translationCache[locale] || params.value
-
-                  // Load existing keys
-                  const existingKeys = await loadLocalesFile(
-                    config.loadPath,
-                    locale,
-                    namespace,
-                  )
-
-                  const originalKeyCount = Object.keys(existingKeys).length
-
-                  // Update the specific key
-                  existingKeys[params.key] = newValue
-
-                  const newKeyCount = Object.keys(existingKeys).length
-
-                  // Safety check: we should only be updating, not removing
-                  // Key count should stay same (update) or increase by 1 (add)
-                  if (newKeyCount < originalKeyCount) {
-                    throw new Error(
-                      `Safety check failed: Updating ${locale}:${namespace} would reduce keys from ${originalKeyCount} to ${newKeyCount}. Aborting.`,
-                    )
-                  }
-
-                  await writeLocalesFile(
-                    config.savePath,
-                    locale,
-                    namespace,
-                    existingKeys,
-                  )
-                }
-              }
-
-              return { targetNamespaces }
-            })
+            const result = await translationMutex.withLock(async () =>
+              updateTranslationKeyOperation({
+                config,
+                key: params.key,
+                value: params.value,
+                language: params.language,
+              }),
+            )
 
             return {
               content: [
@@ -999,13 +909,17 @@ class I18nMagicServer {
                   text: JSON.stringify(
                     {
                       success: true,
-                      message: `Successfully updated translation key "${params.key}" in ${result.targetNamespaces.length} namespace(s) and ${config.locales.length} locale(s)`,
-                      key: params.key,
-                      newValue: params.value,
-                      providedLanguage: params.language || "en",
-                      namespaces: result.targetNamespaces,
-                      locales: config.locales,
-                      diagnostics: logMessages.join("\n"),
+                      message: `Successfully updated translation key "${result.key}" in ${result.updatedLocales.length} locale(s)`,
+                      key: result.key,
+                      newValue: result.value,
+                      providedLanguage: result.sourceLocale,
+                      updatedLocales: result.updatedLocales,
+                      pendingLocales: result.pendingLocales,
+                      locales: result.updatedLocales,
+                      nextStep:
+                        result.pendingLocales.length > 0
+                          ? "Run 'i18n-magic sync' with a configured provider to translate pending locales."
+                          : "All configured locales were updated.",
                     },
                     null,
                     2,
@@ -1037,7 +951,6 @@ class I18nMagicServer {
                   {
                     success: false,
                     error: errorMessage,
-                    details: errorDetails,
                   },
                   null,
                   2,
@@ -1068,7 +981,6 @@ class I18nMagicServer {
             const results: Array<{
               key: string
               value: string
-              namespace: string
               matchType: "key" | "value" | "both"
             }> = []
 
@@ -1093,7 +1005,6 @@ class I18nMagicServer {
                     results.push({
                       key,
                       value,
-                      namespace,
                       matchType:
                         keyMatch && valueMatch
                           ? "both"
@@ -1152,7 +1063,7 @@ class I18nMagicServer {
                       totalResults: results.length,
                       results: limitedResults,
                       hasMore,
-                      tip: "Each result shows the translation key, English value, namespace, and what matched (key, value, or both). Use these keys directly in your code or use get_translation_key for more details.",
+                      tip: "Each result shows the translation key, English value, and what matched (key, value, or both). Use these keys directly in your code or use get_translation_key for more details.",
                     },
                     null,
                     2,
@@ -1184,7 +1095,6 @@ class I18nMagicServer {
                   {
                     success: false,
                     error: errorMessage,
-                    details: errorDetails,
                   },
                   null,
                   2,

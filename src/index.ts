@@ -1,5 +1,10 @@
 // Export command functions for programmatic usage
-export { checkMissing } from "./commands/check-missing.js"
+export {
+  checkMissing,
+  collectMissingTranslations,
+  MissingTranslationsError,
+} from "./commands/check-missing.js"
+export type { MissingTranslationsReport } from "./commands/check-missing.js"
 export { removeUnusedKeys } from "./commands/clean.js"
 
 export { replaceTranslation } from "./commands/replace.js"

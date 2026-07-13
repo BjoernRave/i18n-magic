@@ -27,20 +27,88 @@ const getKeyToReplace = async (
   return { key: keyToReplace, namespaces }
 }
 
+export const replaceTranslationValue = async ({
+  config,
+  key,
+  value,
+  targetNamespaces,
+}: {
+  config: Configuration
+  key: string
+  value: string
+  targetNamespaces: string[]
+}) => {
+  const { loadPath, savePath, defaultLocale, locales, context, openai } = config
+  const stagedFiles = new Map<string, Record<string, string>>()
+  await Promise.all(
+    targetNamespaces.flatMap((namespace) =>
+      locales.map(async (locale) => {
+        const existingKeys = await loadLocalesFile(
+          loadPath,
+          locale,
+          namespace,
+        )
+        stagedFiles.set(JSON.stringify([locale, namespace]), {
+          ...existingKeys,
+        })
+      }),
+    ),
+  )
+
+  const translationCache: Record<string, string> = {
+    [defaultLocale]: value,
+  }
+  await Promise.all(
+    locales
+      .filter((locale) => locale !== defaultLocale)
+      .map(async (locale) => {
+        const translation = await translateKey({
+          context,
+          inputLanguage: defaultLocale,
+          outputLanguage: locale,
+          object: { [key]: value },
+          openai,
+          model: config.model,
+        })
+        translationCache[locale] = translation[key]
+      }),
+  )
+
+  for (const namespace of targetNamespaces) {
+    for (const locale of locales) {
+      const staged = stagedFiles.get(JSON.stringify([locale, namespace]))
+      if (!staged) {
+        throw new Error(
+          `Internal error: no staged snapshot for ${locale}/${namespace}.`,
+        )
+      }
+      staged[key] = translationCache[locale]
+    }
+  }
+
+  for (const namespace of targetNamespaces) {
+    for (const locale of locales) {
+      await writeLocalesFile(
+        savePath,
+        locale,
+        namespace,
+        stagedFiles.get(JSON.stringify([locale, namespace]))!,
+      )
+    }
+  }
+}
+
 export const replaceTranslation = async (
   config: Configuration,
   key?: string,
 ) => {
   const {
     loadPath,
-    savePath,
     defaultLocale,
     defaultNamespace,
     namespaces,
     locales,
     globPatterns,
-    context,
-    openai,
   } = config
 
   // Find all keys with their namespaces from the codebase
@@ -59,7 +127,7 @@ export const replaceTranslation = async (
     namespaces.map(async (namespace) => ({
       namespace,
       keys: await loadLocalesFile(loadPath, defaultLocale, namespace),
-    }))
+    })),
   )
 
   for (const { namespace, keys } of namespaceKeysResults) {
@@ -115,7 +183,7 @@ export const replaceTranslation = async (
     targetNamespaces.map(async (namespace) => {
       const keys = await loadLocalesFile(loadPath, defaultLocale, namespace)
       return { namespace, value: keys[keyToReplace] }
-    })
+    }),
   )
 
   for (const { namespace, value } of currentTranslations) {
@@ -127,44 +195,14 @@ export const replaceTranslation = async (
   }
 
   const newTranslation = await getTextInput("Enter the new translation: ")
+  await replaceTranslationValue({
+    config,
+    key: keyToReplace,
+    value: newTranslation,
+    targetNamespaces,
+  })
 
-  // Batch translate for all non-default locales first
-  const translationCache: Record<string, string> = {
-    [defaultLocale]: newTranslation,
-  }
-
-  const nonDefaultLocales = locales.filter((l) => l !== defaultLocale)
-  if (nonDefaultLocales.length > 0) {
-    await Promise.all(
-      nonDefaultLocales.map(async (locale) => {
-        const translation = await translateKey({
-          context,
-          inputLanguage: defaultLocale,
-          outputLanguage: locale,
-          object: {
-            [keyToReplace]: newTranslation,
-          },
-          openai,
-          model: config.model,
-        })
-        translationCache[locale] = translation[keyToReplace]
-      })
-    )
-  }
-
-  // Update the key in all relevant namespaces and locales in parallel
-  await Promise.all(
-    targetNamespaces.flatMap((namespace) =>
-      locales.map(async (locale) => {
-        const newValue = translationCache[locale]
-        const existingKeys = await loadLocalesFile(loadPath, locale, namespace)
-        existingKeys[keyToReplace] = newValue
-        await writeLocalesFile(savePath, locale, namespace, existingKeys)
-
-        console.log(
-          `Updated "${keyToReplace}" in ${locale} (${namespace}): "${newValue}"`,
-        )
-      })
-    )
+  console.log(
+    `Updated "${keyToReplace}" in ${targetNamespaces.length} namespace(s) and ${locales.length} locale(s).`,
   )
 }

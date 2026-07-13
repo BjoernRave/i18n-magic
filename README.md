@@ -16,8 +16,8 @@ Stop context switching. Let AI handle your translations while you stay in your c
 ## 📋 Requirements
 
 - JSON-based i18n libraries (react-i18next, next-i18next, vue-i18n, etc.)
-- Node.js 16+
-- An OpenAI or Google Gemini API key
+- Node.js 20+
+- An OpenAI or Google Gemini API key for commands that generate translations
 
 ## Why This Matters
 
@@ -48,7 +48,9 @@ npx @scoutello/i18n-magic check-missing   # CI/CD validation
 
 **`clean`** - Removes unused translation keys from all locales. Great for keeping files lean.
 
-**`check-missing`** - Dry-run check. Exits with error code if translations are missing. Perfect for CI pipelines.
+**`check-missing`** - Read-only check across every configured locale and namespace. Exits with error code if translations are missing and never calls a provider or writes. Perfect for CI pipelines.
+
+`check-missing`, `clean`, `remove-key`, and `restore-from-namespaces` work without provider credentials. Translation commands request a provider only when they actually have values to translate.
 
 ### Namespace Organization (for large apps)
 
@@ -84,7 +86,7 @@ Batch add 2+ keys in one call with better performance than multiple single-key c
 Retrieve current value for any key.
 
 ### 5. `update_translation_key` - Fix & Auto-Translate
-Update a key and **instantly translate to all languages**. No sync needed!
+With a configured provider, update and validate all locales before writing. Without a provider, update only the supplied language (or `defaultLocale`) and report the remaining locales as pending.
 
 ### 6. `list_untranslated_keys` - Batch Check
 Show all missing keys across your codebase.
@@ -177,9 +179,9 @@ If nothing exists:
 **AI**:
 1. Finds the key via search
 2. Calls `update_translation_key`
-3. **Auto-translates to ALL languages instantly**
+3. Auto-translates to all languages when a provider is configured
 
-No sync needed!
+Without a provider, the source locale is updated and the response instructs you to run `sync` for the pending locales.
 
 ### Pattern 3: Batch Check
 
@@ -220,7 +222,7 @@ npx @scoutello/i18n-magic sync
 
 Later: **"Change title to 'Your Profile'"**
 
-**AI**: Calls `update_translation_key` → instantly updated in all 4 languages. No sync needed!
+**AI**: Calls `update_translation_key` → all locales update together with a provider, or only the source locale updates and the others are reported as pending.
 
 ---
 
@@ -237,6 +239,10 @@ context: 'E-commerce for outdoor gear. Friendly tone. Target: adventurers.'
 ```
 
 More context = better AI translations.
+
+### Fail-closed translation writes
+
+Provider responses must contain exactly the requested keys with string values. A malformed response is retried once with a corrective prompt. If the retry or any later locale fails, `scan`, `sync`, `replace`, and programmatic add/update operations discard their staged changes without writing locale files. Final storage failures can still leave partial writes across files.
 
 ### CI/CD: Auto-translate on PR
 

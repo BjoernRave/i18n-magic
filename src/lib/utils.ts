@@ -7,6 +7,15 @@ import { minimatch } from "minimatch"
 import type OpenAI from "openai"
 import prompts from "prompts"
 import { languages } from "./languges.js"
+import {
+  resolveConfiguredLocale,
+  resolveLocaleTemplatePath,
+} from "./locale-storage.js"
+import {
+  parseTranslationResponse,
+  TranslationProviderUnavailableError,
+  TranslationResponseError,
+} from "./translation-response.js"
 import type { Configuration, GlobPatternConfig } from "./types.js"
 
 export const loadConfig = async ({
@@ -17,8 +26,7 @@ export const loadConfig = async ({
   const filePath = path.join(process.cwd(), configPath)
 
   if (!fs.existsSync(filePath)) {
-    console.error("Config file does not exist:", filePath)
-    process.exit(1)
+    throw new Error(`Config file does not exist: ${filePath}`)
   }
 
   try {
@@ -33,32 +41,10 @@ export const loadConfig = async ({
       errorMessage.includes("MODULE_NOT_FOUND") ||
       errorMessage.includes("Cannot find module")
 
-    console.error("Error while loading config:", error)
-
-    if (isModuleNotFound) {
-      console.error("\n💡 Tip: This error usually occurs when:")
-      console.error(
-        "   1. Your config file imports dependencies that aren't installed",
-      )
-      console.error(
-        "   2. Dependencies are installed but have missing peer dependencies",
-      )
-      console.error(
-        "   3. You're using a custom storage solution (e.g., AWS S3) without proper dependencies",
-      )
-      console.error("\n   To fix:")
-      console.error(
-        "   - Check if your config file imports any external packages",
-      )
-      console.error(
-        "   - Ensure all dependencies are properly installed: pnpm install",
-      )
-      console.error(
-        "   - If using AWS SDK, ensure all @smithy/* peer dependencies are installed",
-      )
-    }
-
-    process.exit(1)
+    const hint = isModuleNotFound
+      ? " Check the config imports and installed dependencies."
+      : ""
+    throw new Error(`Error while loading config: ${errorMessage}.${hint}`)
   }
 }
 
@@ -109,6 +95,8 @@ export const translateKey = async ({
 }) => {
   // Split object into chunks of 100 keys
   const entries = Object.entries(object)
+  if (entries.length === 0) return {}
+  if (!openai) throw new TranslationProviderUnavailableError()
   const chunks: Array<[string, string][]> = []
 
   for (let i = 0; i < entries.length; i += 100) {
@@ -129,34 +117,57 @@ export const translateKey = async ({
 
   for (const chunk of chunks) {
     const chunkObject = Object.fromEntries(chunk)
-    const completion = await openai.chat.completions.create({
-      model,
-      messages: [
-        {
-          content: `You are a bot that translates the values of a locales JSON. ${
-            context
-              ? `The user provided some additional context or guidelines about what to fill in the blanks: "${context}". `
-              : ""
-          }The user provides you a JSON with a field named "inputLanguage", which defines the language the values of the JSON are defined in. It also has a field named "outputLanguage", which defines the language you should translate the values to. The last field is named "data", which includes the object with the values to translate. The keys of the values should never be changed. You output only a JSON, which has the same keys as the input, but with translated values. I give you an example input: {"inputLanguage": "English", outputLanguage: "German", "keys": {"hello": "Hello", "world": "World"}}. The output should be {"hello": "Hallo", "world": "Welt"}.`,
-          role: "system",
-        },
-        {
-          content: JSON.stringify({
-            inputLanguage: input,
-            outputLanguage: output,
-            data: chunkObject,
-          }),
-          role: "user",
-        },
-      ],
-      response_format: {
-        type: "json_object",
-      },
-    })
+    const requestedKeys = chunk.map(([key]) => key)
+    let translatedChunk: Record<string, string> | undefined
 
-    const translatedChunk = JSON.parse(
-      completion.choices[0].message.content,
-    ) as Record<string, string>
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const correctivePrompt =
+        attempt === 1
+          ? ` The previous response was invalid. Return exactly these keys with string values and no additional keys: ${JSON.stringify(requestedKeys)}.`
+          : ""
+      const completion = await openai.chat.completions.create({
+        model,
+        messages: [
+          {
+            content: `You are a bot that translates the values of a locales JSON. ${
+              context
+                ? `The user provided some additional context or guidelines about what to fill in the blanks: "${context}". `
+                : ""
+            }The user provides you a JSON with a field named "inputLanguage", which defines the language the values of the JSON are defined in. It also has a field named "outputLanguage", which defines the language you should translate the values to. The last field is named "data", which includes the object with the values to translate. The keys of the values should never be changed. You output only a JSON, which has the same keys as the input, but with translated values. I give you an example input: {"inputLanguage": "English", outputLanguage: "German", "keys": {"hello": "Hello", "world": "World"}}. The output should be {"hello": "Hallo", "world": "Welt"}.${correctivePrompt}`,
+            role: "system",
+          },
+          {
+            content: JSON.stringify({
+              inputLanguage: input,
+              outputLanguage: output,
+              data: chunkObject,
+            }),
+            role: "user",
+          },
+        ],
+        response_format: {
+          type: "json_object",
+        },
+      })
+
+      try {
+        translatedChunk = parseTranslationResponse(
+          completion.choices[0]?.message.content ?? null,
+          requestedKeys,
+        )
+        break
+      } catch (error) {
+        if (!(error instanceof TranslationResponseError) || attempt === 1) {
+          throw error
+        }
+      }
+    }
+
+    if (!translatedChunk) {
+      throw new TranslationResponseError(
+        "Translation provider did not return a valid response.",
+      )
+    }
 
     // Merge translated chunk with result
     result = { ...result, ...translatedChunk }
@@ -185,9 +196,7 @@ export const loadLocalesFile = async (
   const silent = options?.silent ?? false
 
   if (typeof loadPath === "string") {
-    const resolvedPath = loadPath
-      .replace("{{lng}}", locale)
-      .replace("{{ns}}", namespace)
+    const resolvedPath = resolveLocaleTemplatePath(loadPath, locale, namespace)
 
     // Check if file exists, return empty object if it doesn't
     if (!fs.existsSync(resolvedPath)) {
@@ -227,9 +236,11 @@ export const writeLocalesFile = async (
   data: Record<string, string>,
 ) => {
   if (typeof savePath === "string") {
-    const resolvedSavePath = savePath
-      .replace("{{lng}}", locale)
-      .replace("{{ns}}", namespace)
+    const resolvedSavePath = resolveLocaleTemplatePath(
+      savePath,
+      locale,
+      namespace,
+    )
 
     // Ensure directory exists
     const dir = path.dirname(resolvedSavePath)
@@ -288,28 +299,54 @@ export const getNamespacesForFile = (
 ): string[] => {
   const matchingNamespaces: string[] = []
 
-  // Normalize the file path - remove leading ./ if present
-  const normalizedFilePath = filePath.replace(/^\.\//, "")
+  const normalizeSlashes = (input: string) => input.replace(/\\/g, "/")
+  const stripLeadingDotSlash = (input: string) => input.replace(/^\.\//, "")
+  const toRelativeFromCwd = (input: string) => {
+    const normalizedInput = normalizeSlashes(input)
+    if (!path.isAbsolute(normalizedInput)) {
+      return stripLeadingDotSlash(normalizedInput)
+    }
+
+    const cwd = normalizeSlashes(process.cwd())
+    const relative = normalizeSlashes(path.relative(cwd, normalizedInput))
+    return stripLeadingDotSlash(relative)
+  }
+
+  const normalizedFilePath = stripLeadingDotSlash(normalizeSlashes(filePath))
+  const relativeFilePath = toRelativeFromCwd(filePath)
+  const filePathVariants = new Set<string>([
+    filePath,
+    normalizeSlashes(filePath),
+    normalizedFilePath,
+    relativeFilePath,
+  ])
 
   for (const pattern of globPatterns) {
     if (typeof pattern === "object") {
-      // Normalize the pattern - remove leading ./ if present
-      const normalizedPattern = pattern.pattern.replace(/^\.\//, "")
+      const normalizedPattern = stripLeadingDotSlash(
+        normalizeSlashes(pattern.pattern),
+      )
+      const relativePattern = toRelativeFromCwd(pattern.pattern)
+      const patternVariants = new Set<string>([
+        pattern.pattern,
+        normalizeSlashes(pattern.pattern),
+        normalizedPattern,
+        relativePattern,
+      ])
 
-      // Try matching with both the original and normalized paths/patterns
-      const isMatch =
-        minimatch(filePath, pattern.pattern) ||
-        minimatch(normalizedFilePath, pattern.pattern) ||
-        minimatch(filePath, normalizedPattern) ||
-        minimatch(normalizedFilePath, normalizedPattern)
+      const isMatch = Array.from(filePathVariants).some((fileVariant) =>
+        Array.from(patternVariants).some((patternVariant) =>
+          minimatch(fileVariant, patternVariant),
+        ),
+      )
 
       // Debug logging to help identify the issue
       if (process.env.DEBUG_NAMESPACE_MATCHING) {
         console.log(
-          `Checking file: ${filePath} (normalized: ${normalizedFilePath})`,
+          `Checking file: ${filePath} (normalized: ${normalizedFilePath}, relative: ${relativeFilePath})`,
         )
         console.log(
-          `Against pattern: ${pattern.pattern} (normalized: ${normalizedPattern})`,
+          `Against pattern: ${pattern.pattern} (normalized: ${normalizedPattern}, relative: ${relativePattern})`,
         )
         console.log(`Match result: ${isMatch}`)
         console.log(`Namespaces: ${pattern.namespaces.join(", ")}`)
@@ -850,7 +887,20 @@ export const addTranslationKeys = async ({
     }
   }
 
+  const validatedKeys = keys.map(({ key, value, language }) => ({
+    key,
+    value,
+    language: resolveConfiguredLocale(config, language),
+  }))
+
   const log = console.log
+  const namespaceResolutionDebug =
+    process.env.DEBUG_NAMESPACE_RESOLUTION === "1" ||
+    process.env.DEBUG_NAMESPACE_RESOLUTION === "true"
+  const debugNamespaceResolution = (...messages: string[]) => {
+    if (!namespaceResolutionDebug) return
+    console.error(`[i18n-magic][namespace-resolution] ${messages.join(" ")}`)
+  }
   log(`🚀 Batch adding ${keys.length} translation key(s)...`)
 
   // Step 1: Single codebase scan for all keys (most expensive operation)
@@ -873,11 +923,9 @@ export const addTranslationKeys = async ({
 
   // Step 2: Determine namespaces for each key
   // Resolution order:
-  // 1) Explicit namespace prefix (e.g. "dashboard:welcome")
-  // 2) Code usage scan matches
-  // 3) Existing key in default locale namespace files
-  // 4) Key prefix matching a namespace (e.g. "dashboard.title")
-  // 5) Default namespace fallback
+  // 1) Code usage scan matches (derived from user globPatterns)
+  // 2) Existing key in default locale namespace files
+  // 3) Default namespace fallback
   const defaultLocaleKeysByNamespace = new Map<string, Record<string, string>>()
   await Promise.all(
     namespaces.map(async (namespace) => {
@@ -892,50 +940,70 @@ export const addTranslationKeys = async ({
     }),
   )
 
-  const preparedKeys = keys.map(({ key, value, language = "en" }) => {
+  const preparedKeys = validatedKeys.map(({ key, value, language }) => {
     const splitKey = key.split(":")
-    const hasExplicitNamespace =
-      splitKey.length > 1 && namespaces.includes(splitKey[0])
-    const normalizedKey = hasExplicitNamespace ? splitKey.slice(1).join(":") : key
-    const explicitNamespace = hasExplicitNamespace ? splitKey[0] : null
+    const hasNamespacedKey = splitKey.length > 1 && namespaces.includes(splitKey[0])
+    const normalizedKey = hasNamespacedKey ? splitKey.slice(1).join(":") : key
     const foundNamespaces = new Set<string>()
+    const resolutionReasons: string[] = []
 
-    if (explicitNamespace) {
-      foundNamespaces.add(explicitNamespace)
-    } else {
-      for (const entry of keysWithNamespaces) {
-        for (const namespace of entry.namespaces) {
-          const pureKey = getPureKey(
-            entry.key,
-            namespace,
-            namespace === defaultNamespace,
+    for (const entry of keysWithNamespaces) {
+      const scannedSplitKey = entry.key.split(":")
+      const scannedHasNamespace =
+        scannedSplitKey.length > 1 && namespaces.includes(scannedSplitKey[0])
+      const scannedExplicitNamespace = scannedHasNamespace
+        ? scannedSplitKey[0]
+        : null
+      const scannedNormalizedKey = scannedHasNamespace
+        ? scannedSplitKey.slice(1).join(":")
+        : entry.key
+
+      if (
+        scannedExplicitNamespace &&
+        scannedNormalizedKey === normalizedKey &&
+        !foundNamespaces.has(scannedExplicitNamespace)
+      ) {
+        foundNamespaces.add(scannedExplicitNamespace)
+        resolutionReasons.push(
+          `code-usage explicit key match in ${entry.file} -> ${scannedExplicitNamespace}`,
+        )
+      }
+
+      for (const namespace of entry.namespaces) {
+        const pureKey = getPureKey(
+          entry.key,
+          namespace,
+          namespace === defaultNamespace,
+        )
+        if (entry.key === normalizedKey || pureKey === normalizedKey) {
+          foundNamespaces.add(namespace)
+          resolutionReasons.push(
+            `code-usage file match in ${entry.file} -> ${namespace}`,
           )
-          if (entry.key === normalizedKey || pureKey === normalizedKey) {
-            foundNamespaces.add(namespace)
-          }
         }
       }
+    }
 
-      if (foundNamespaces.size === 0) {
-        for (const namespace of namespaces) {
-          const namespaceKeys = defaultLocaleKeysByNamespace.get(namespace) || {}
-          if (Object.hasOwn(namespaceKeys, normalizedKey)) {
-            foundNamespaces.add(namespace)
-          }
-        }
-      }
-
-      if (foundNamespaces.size === 0) {
-        const keyPrefix = normalizedKey.split(".")[0]
-        if (namespaces.includes(keyPrefix)) {
-          foundNamespaces.add(keyPrefix)
+    if (foundNamespaces.size === 0) {
+      for (const namespace of namespaces) {
+        const namespaceKeys = defaultLocaleKeysByNamespace.get(namespace) || {}
+        if (Object.hasOwn(namespaceKeys, normalizedKey)) {
+          foundNamespaces.add(namespace)
+          resolutionReasons.push(`existing-key fallback -> ${namespace}`)
         }
       }
     }
 
     if (foundNamespaces.size === 0) {
       foundNamespaces.add(defaultNamespace)
+      resolutionReasons.push(`default fallback -> ${defaultNamespace}`)
     }
+
+    debugNamespaceResolution(
+      `input="${key}" normalized="${normalizedKey}"`,
+      `resolved=[${Array.from(foundNamespaces).join(", ")}]`,
+      `reasons=[${resolutionReasons.join(" | ")}]`,
+    )
 
     return {
       key: normalizedKey,
@@ -978,6 +1046,7 @@ export const addTranslationKeys = async ({
   const fileIOStartTime = performance.now()
   const localeFiles = new Map<string, Record<string, string>>()
   const originalKeyCounts = new Map<string, number>()
+  const changedFiles = new Set<string>()
   const loadErrors: Array<{ fileKey: string; error: string }> = []
 
   // Load files for all locales × all affected namespaces in parallel (read-only)
@@ -1025,6 +1094,7 @@ export const addTranslationKeys = async ({
     }
 
     localeFiles.set(fileKey, existingKeys)
+    changedFiles.add(fileKey)
   }
 
   // Step 7: Batch translate if OpenAI is configured
@@ -1068,18 +1138,12 @@ export const addTranslationKeys = async ({
             object: keysToTranslate,
             openai,
             model,
-          })
-            .then((translated) => {
-              translationCache.set(
-                `${inputLanguage}:${targetLocale}`,
-                translated,
-              )
-            })
-            .catch((error) => {
-              log(
-                `⚠️  Failed to translate ${keyValues.length} key(s) from ${inputLanguage} to ${targetLocale}: ${error instanceof Error ? error.message : "Unknown error"}`,
-              )
-            }),
+          }).then((translated) => {
+            translationCache.set(
+              `${inputLanguage}:${targetLocale}`,
+              translated,
+            )
+          }),
         )
       }
     }
@@ -1097,7 +1161,7 @@ export const addTranslationKeys = async ({
         if (!translated) continue
 
         for (const { key, namespaces } of keyValues) {
-          if (translated[key]) {
+          if (Object.hasOwn(translated, key)) {
             for (const namespace of namespaces) {
               const fileKey = `${targetLocale}:${namespace}`
               // File MUST already be loaded from step 5 - if not, something went wrong
@@ -1109,6 +1173,7 @@ export const addTranslationKeys = async ({
               }
               // Merge translated key with existing keys (don't overwrite the whole file)
               localeFiles.get(fileKey)![key] = translated[key]
+              changedFiles.add(fileKey)
             }
           }
         }
@@ -1140,6 +1205,7 @@ export const addTranslationKeys = async ({
 
   // All validations passed, now write files sequentially to avoid race conditions
   for (const [fileKey, keys] of localeFiles) {
+    if (!changedFiles.has(fileKey)) continue
     const [locale, namespace] = fileKey.split(":")
     await writeLocalesFile(savePath, locale, namespace, keys)
   }
@@ -1161,7 +1227,7 @@ export const addTranslationKeys = async ({
       config.locales.forEach((locale) => {
         if (locale !== language) {
           const translated = translationCache.get(`${language}:${locale}`)
-          if (translated?.[key]) {
+          if (translated && Object.hasOwn(translated, key)) {
             savedLocales.add(locale)
           }
         }
@@ -1171,6 +1237,7 @@ export const addTranslationKeys = async ({
     return {
       key,
       value,
+      providedLanguage: language,
       namespace: resolvedNamespaces.join(", "),
       locale: Array.from(savedLocales).sort().join(", "),
     }
@@ -1190,7 +1257,7 @@ export const addTranslationKeys = async ({
 export const addTranslationKey = async ({
   key,
   value,
-  language = "en",
+  language,
   config,
 }: {
   key: string

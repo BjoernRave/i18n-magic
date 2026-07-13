@@ -1,8 +1,7 @@
 import type { Configuration } from "../lib/types.js"
 import {
-  checkAllKeysExist,
-  findExistingTranslations,
-  getMissingKeys,
+  getKeysWithNamespaces,
+  getPureKey,
   getTextInput,
   loadLocalesFile,
   translateKey,
@@ -10,11 +9,15 @@ import {
 } from "../lib/utils.js"
 import { findUnusedKeys, removeUnusedKeys } from "./clean.js"
 
+const fileKey = (locale: string, namespace: string) =>
+  JSON.stringify([locale, namespace])
+
 export const translateMissing = async (config: Configuration) => {
   const {
     loadPath,
     savePath,
     defaultLocale,
+    defaultNamespace,
     namespaces,
     locales,
     context,
@@ -22,138 +25,157 @@ export const translateMissing = async (config: Configuration) => {
     disableTranslationDuringScan,
     autoClear,
   } = config
+  const activeLocales = disableTranslationDuringScan
+    ? [defaultLocale]
+    : locales
+  const keysWithNamespaces = await getKeysWithNamespaces({
+    globPatterns: config.globPatterns,
+    defaultNamespace,
+  })
+  const expectedByNamespace = Object.fromEntries(
+    namespaces.map((namespace) => [namespace, new Set<string>()]),
+  ) as Record<string, Set<string>>
 
-  if (autoClear) {
-    console.log("🧹 Checking for unused translations before scanning...")
-    const report = await findUnusedKeys(config)
-
-    if (report.unusedCount > 0) {
-      await removeUnusedKeys(config)
-      console.log("")
-    } else {
-      console.log("✅ No unused keys found.\n")
+  for (const { key, namespaces: keyNamespaces } of keysWithNamespaces) {
+    for (const namespace of keyNamespaces) {
+      if (!expectedByNamespace[namespace]) continue
+      const pureKey = getPureKey(
+        key,
+        namespace,
+        namespace === defaultNamespace,
+      )
+      const expectedKey = pureKey || (!key.includes(":") ? key : null)
+      if (expectedKey !== null) expectedByNamespace[namespace].add(expectedKey)
     }
   }
 
-  const newKeys = await getMissingKeys(config)
-
-  if (newKeys.length === 0) {
-    console.log("No new keys found.")
-
-    await checkAllKeysExist(config)
-
-    return
-  }
-
-  console.log(
-    `${newKeys.length} keys are missing. Please provide the values for the following keys in ${defaultLocale}:`,
-  )
-
-  const newKeysWithDefaultLocale = []
-
-  // Check for existing translations in parallel
-  const keysList = newKeys.map((k) => k.key)
-  const existingTranslationResults = await findExistingTranslations(
-    keysList,
-    namespaces,
-    defaultLocale,
-    loadPath,
-  )
-
-  const reusedKeys: string[] = []
-  for (const newKey of newKeys) {
-    const existingValue = existingTranslationResults[newKey.key]
-
-    let answer: string
-    // Use explicit null check instead of truthy check to handle empty string values
-    if (existingValue !== null) {
-      reusedKeys.push(newKey.key)
-      answer = existingValue
-    } else {
-      answer = await getTextInput(newKey.key, newKey.namespaces)
-    }
-
-    newKeysWithDefaultLocale.push({
-      key: newKey.key,
-      namespace: newKey.namespace,
-      namespaces: newKey.namespaces,
-      value: answer,
-    })
-  }
-
-  // Batch log reused keys
-  if (reusedKeys.length > 0) {
-    console.log(
-      `🔄 Auto-reused ${reusedKeys.length} existing values from other namespaces`,
-    )
-  }
-
-  const newKeysObject = newKeysWithDefaultLocale.reduce((prev, next) => {
-    prev[next.key] = next.value
-
-    return prev
-  }, {})
-
-  const allLocales = disableTranslationDuringScan ? [defaultLocale] : locales
-
-  // Batch translate for all non-default locales in parallel
-  const translationCache: Record<string, Record<string, string>> = {
-    [defaultLocale]: newKeysObject,
-  }
-
-  const nonDefaultLocales = allLocales.filter((l) => l !== defaultLocale)
-  if (nonDefaultLocales.length > 0) {
-    await Promise.all(
-      nonDefaultLocales.map(async (locale) => {
-        const translatedValues = await translateKey({
-          inputLanguage: defaultLocale,
-          outputLanguage: locale,
-          context,
-          object: newKeysObject,
-          openai,
-          model: config.model,
-        })
-        translationCache[locale] = translatedValues
-      }),
-    )
-  }
-
-  // Process all locale/namespace combinations in parallel
-  const writeResults: Array<{
-    locale: string
-    namespace: string
-    keyCount: number
-  }> = []
+  const stagedFiles = new Map<string, Record<string, string>>()
   await Promise.all(
-    allLocales.flatMap((locale) =>
+    activeLocales.flatMap((locale) =>
       namespaces.map(async (namespace) => {
-        const existingKeys = await loadLocalesFile(loadPath, locale, namespace)
-
-        const relevantKeys = newKeysWithDefaultLocale.filter((key) =>
-          key.namespaces?.includes(namespace),
+        const translations = await loadLocalesFile(
+          loadPath,
+          locale,
+          namespace,
+          { silent: true },
         )
-
-        if (relevantKeys.length === 0) {
-          return
-        }
-
-        const translatedValues = translationCache[locale]
-        for (const key of relevantKeys) {
-          existingKeys[key.key] = translatedValues[key.key]
-        }
-
-        await writeLocalesFile(savePath, locale, namespace, existingKeys)
-        writeResults.push({ locale, namespace, keyCount: relevantKeys.length })
+        stagedFiles.set(fileKey(locale, namespace), { ...translations })
       }),
     ),
   )
 
-  // Log where keys were written
-  for (const { locale, namespace, keyCount } of writeResults) {
-    console.log(`   📝 Wrote ${keyCount} key(s) to ${locale}/${namespace}.json`)
+  const changedFiles = new Set<string>()
+  const missingDefaultKeys = new Map<string, Set<string>>()
+  for (const namespace of namespaces) {
+    const translations = stagedFiles.get(fileKey(defaultLocale, namespace))!
+    for (const key of expectedByNamespace[namespace]) {
+      if (!Object.hasOwn(translations, key)) {
+        missingDefaultKeys.get(key)?.add(namespace) ??
+          missingDefaultKeys.set(key, new Set([namespace]))
+      }
+    }
   }
 
-  await checkAllKeysExist(config)
+  if (missingDefaultKeys.size > 0) {
+    console.log(
+      `${missingDefaultKeys.size} keys are missing. Please provide the values for the following keys in ${defaultLocale}:`,
+    )
+  }
 
-  console.log(`Successfully translated ${newKeys.length} keys.`)
+  for (const [key, keyNamespaces] of missingDefaultKeys) {
+    let value: string | undefined
+    for (const namespace of namespaces) {
+      const translations = stagedFiles.get(fileKey(defaultLocale, namespace))!
+      if (Object.hasOwn(translations, key)) {
+        value = translations[key]
+        break
+      }
+    }
+
+    value ??= await getTextInput(key, Array.from(keyNamespaces))
+    for (const namespace of keyNamespaces) {
+      stagedFiles.get(fileKey(defaultLocale, namespace))![key] = value
+      changedFiles.add(fileKey(defaultLocale, namespace))
+    }
+  }
+
+  await Promise.all(
+    activeLocales
+      .filter((locale) => locale !== defaultLocale)
+      .map(async (locale) => {
+        const missingByKey = new Map<string, Set<string>>()
+        for (const namespace of namespaces) {
+          const translations = stagedFiles.get(fileKey(locale, namespace))!
+          for (const key of expectedByNamespace[namespace]) {
+            if (!Object.hasOwn(translations, key)) {
+              missingByKey.get(key)?.add(namespace) ??
+                missingByKey.set(key, new Set([namespace]))
+            }
+          }
+        }
+
+        const reused: Record<string, string> = {}
+        const keysToTranslate: Record<string, string> = {}
+        for (const key of missingByKey.keys()) {
+          let existingValue: string | undefined
+          for (const namespace of namespaces) {
+            const translations = stagedFiles.get(fileKey(locale, namespace))!
+            if (Object.hasOwn(translations, key)) {
+              existingValue = translations[key]
+              break
+            }
+          }
+
+          if (existingValue !== undefined) {
+            reused[key] = existingValue
+            continue
+          }
+
+          const sourceNamespace = Array.from(missingByKey.get(key)!)[0]
+          const sourceTranslations = stagedFiles.get(
+            fileKey(defaultLocale, sourceNamespace),
+          )!
+          keysToTranslate[key] = sourceTranslations[key]
+        }
+
+        const translated = await translateKey({
+          inputLanguage: defaultLocale,
+          outputLanguage: locale,
+          context,
+          object: keysToTranslate,
+          openai,
+          model: config.model,
+        })
+        const resolvedValues = { ...reused, ...translated }
+
+        for (const [key, keyNamespaces] of missingByKey) {
+          for (const namespace of keyNamespaces) {
+            stagedFiles.get(fileKey(locale, namespace))![key] =
+              resolvedValues[key]
+            changedFiles.add(fileKey(locale, namespace))
+          }
+        }
+      }),
+  )
+
+  for (const locale of activeLocales) {
+    for (const namespace of namespaces) {
+      const key = fileKey(locale, namespace)
+      if (!changedFiles.has(key)) continue
+      await writeLocalesFile(savePath, locale, namespace, stagedFiles.get(key)!)
+      console.log(`   📝 Updated ${locale}/${namespace}.json`)
+    }
+  }
+
+  if (autoClear) {
+    console.log("🧹 Checking for unused translations after scanning...")
+    const report = await findUnusedKeys(config)
+    if (report.unusedCount > 0) await removeUnusedKeys(config)
+  }
+
+  if (changedFiles.size === 0) {
+    console.log("No missing translations found.")
+  } else {
+    console.log(`Successfully updated ${changedFiles.size} locale file(s).`)
+  }
 }

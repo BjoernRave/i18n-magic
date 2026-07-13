@@ -40,5 +40,5 @@ export interface Configuration {
 export interface CommandType {
   name: string
   description: string
-  action: (config: Configuration, ...args: any[]) => Promise<void>
+  action: (config: Configuration, ...args: any[]) => Promise<unknown>
 }
